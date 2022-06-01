@@ -7,6 +7,7 @@ from glob import glob
 import random
 from map_parser.map_parser import MapParser
 from osu_sr_calculator import calculateStarRating
+from based import *
 import os
 
 
