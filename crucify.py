@@ -13,10 +13,8 @@ parser.add_argument('--borderless', '-b', action='store_true')
 args = parser.parse_args()
 #
 
-if(args.gamemode == None):
-    gamemode = utilities.Gamemode(0)
-else:
-    gamemode = utilities.Gamemode(args.gamemode[0])
+gamemode = utilities.Gamemode(
+    args.gamemode[0]) if args.gamemode != None else utilities.Gamemode(0)
 
 print("Gamemode set to:", gamemode)
 
