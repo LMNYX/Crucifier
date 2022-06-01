@@ -19,8 +19,6 @@ gamemode = utilities.Gamemode(
 print("Gamemode set to:", gamemode)
 
 print("Please wait until the maps are loaded...")
-MapCollector = utilities.MapCollector()
-MapCollector.Collect()
 
 Game = utilities.Game([args.width, args.height],
                       gamemode, isBorderless=args.borderless)
