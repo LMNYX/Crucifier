@@ -33,7 +33,7 @@ class MapParser:
         self.__get_version()
 
     def __load_file(self, path: str) -> None:
-        with open(path, 'r') as fptr:
+        with open(path, 'r', encoding='utf-8') as fptr:
             lines = fptr.readlines()
         self.lines = [line.strip() for line in lines]
 
@@ -60,7 +60,8 @@ class MapParser:
             Exception('Failed to load')
 
         # [1,2,3,4] -> zip([1,3],[2,4]) -> [(1,2), (3,4)]
-        idx_pair_list = list(zip(section_idx_list[0:][::2], section_idx_list[1:][::2]))
+        idx_pair_list = list(
+            zip(section_idx_list[0:][::2], section_idx_list[1:][::2]))
         # zip(['key1','key2'], [(1,2), (3,4)]) -> [('key1', (1,2)), ('key2', (3,4))]
         key_pair_list = list(zip(key_list, idx_pair_list))
 
@@ -137,17 +138,19 @@ class MapParser:
         else:
             raise KeyError('{} is not a valid key'.format(key))
 
-    def __get_section(self, key: Union[str, None]=None) -> None:
+    def __get_section(self, key: Union[str, None] = None) -> None:
         sections = self.sections
         # ignore first line eg: [General] of section => [1:]
         if key and key in sections.keys():
-            self.parse_ret[key] = [self.lines[line] for line in range(sections[key][0], sections[key][1])][1:]
+            self.parse_ret[key] = [self.lines[line]
+                                   for line in range(sections[key][0], sections[key][1])][1:]
         elif not key:
             for key in self.key_list:
                 if key in sections.keys():
-                    self.parse_ret[key] = [self.lines[line] for line in range(sections[key][0], sections[key][1])][1:]
+                    self.parse_ret[key] = [self.lines[line] for line in range(
+                        sections[key][0], sections[key][1])][1:]
 
-    def __transform_sections(self, key: Union[str, None]=None) -> None:
+    def __transform_sections(self, key: Union[str, None] = None) -> None:
         if key:
             self.parse_ret[key] = self.__transform_section(key)
         elif not key:
@@ -156,7 +159,8 @@ class MapParser:
 
     def __get_version(self) -> None:
         if len(self.lines) > 0:
-            match = re.compile(r'osu file format v([0-9]*)').match(self.lines[0])
+            match = re.compile(
+                r'osu file format v([0-9]*)').match(self.lines[0])
             if match:
                 self.parse_ret['version'] = match.group(1)
 
