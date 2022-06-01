@@ -149,14 +149,11 @@ class Game:
 
         self.window = pygame.display.set_mode(
             size, pygame.NOFRAME if isBorderless else 0)
-        self.logic = Logic(np.array(size))
         self.running = True
 
     def Start(self):
         pygame.display.update()
         pygame.font.init()
-
-        self.logic.start_loop()
 
         # Temporary resources. TO-DO: Make it better.
         font = pygame.font.SysFont("Times New Roman", 16)
@@ -164,6 +161,7 @@ class Game:
         pekoraSpin = pygame.transform.scale(pekoraSpin, (128, 128))
         pekoraAngle = 0
         pekoraSpinning = True
+        _test = 0
 
         while self.running:
             for event in pygame.event.get():
@@ -172,38 +170,36 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r:
                         self.current_map = self.MapCollector.GetRandomMap()
+                        pekoraSpinning = False
+                        _test = 0
 
             self.window.fill((0, 0, 0))
-            rotated_image = pygame.transform.rotate(
-                pekoraSpin, pekoraAngle)
-            self.window.blit(rotated_image, rotated_image.get_rect(
-                center=pekoraSpin.get_rect(topleft=(self.size[0]/2-64, self.size[1]/2-64)).center).topleft)
             text_surface = font.render(
-                f'Map: {self.current_map.beatmap.metadata["Artist"]} - {self.current_map.beatmap.metadata["Title"]} [{self.current_map.beatmap.metadata["Version"]}] ({self.current_map.beatmap.metadata["Creator"]}) {self.current_map.nm_sr}*' if self.current_map != None else "", False, (255, 255, 255))
+                f'Map: {self.current_map.beatmap.metadata["Artist"]} - {self.current_map.beatmap.metadata["Title"]} [{self.current_map.beatmap.metadata["Version"]}] ({self.current_map.beatmap.metadata["Creator"]}) {self.current_map.nm_sr}*' if self.current_map != None else "No map loaded.", False, (255, 255, 255))
+            offsetRender = font.render(
+                f'Offset: {_test}', False, (255, 255, 255))
             if pekoraSpinning:
+                rotated_image = pygame.transform.rotate(
+                    pekoraSpin, pekoraAngle)
+                self.window.blit(rotated_image, rotated_image.get_rect(
+                    center=pekoraSpin.get_rect(topleft=(self.size[0]/2-64, self.size[1]/2-64)).center).topleft)
                 if pekoraAngle > 360:
                     pekoraAngle = 0
                 else:
-                    pekoraAngle += 0.777
+                    pekoraAngle += 0.555
 
             hitcricle = pygame.image.load(r'resources\\hitcircle.png')
             if self.current_map != None:
-                for hitobject in self.current_map.hitObjects:
-                    self.window.blit(
-                        hitcricle, (int(hitobject.x), int(hitobject.y)))
+                _test += 10
+                for i in self.current_map.hitObjects:
+                    if(i.offset < _test and i.offset > _test-1000):
+                        self.window.blit(hitcricle, hitcricle.get_rect(
+                            center=hitcricle.get_rect(topleft=(i.x-64, i.y-64)).center).topleft)
 
             self.window.blit(text_surface, (0, 0))
+            self.window.blit(offsetRender, (0, 21))
 
             pygame.display.update()
 
         pygame.time.wait(10)
         pygame.quit()
-
-    def LoadMap(self, map: Map):
-        self.current_map = map
-        self.RenderMap()
-        return
-
-    def RenderMap(self):
-
-        return
