@@ -20,12 +20,6 @@ else:
 
 print("Gamemode set to:", gamemode)
 
-MapCollector = utilities.MapCollector()
-MapCollector.Collect()
-print(MapCollector.GetMapset(0))
-print(MapCollector.GetRandomMapset())
-print(MapCollector.GetRandomMap())
-
 Game = utilities.Game([args.width, args.height],
                       gamemode, isBorderless=args.borderless)
 Game.Start()
