@@ -53,7 +53,13 @@ class Mapset(object):
     def load_maps(self):
         maps = []
         for map_path in glob(self.path + '/*.osu'):
-            maps.append(Map(map_path))
+            try:
+                maps.append(Map(map_path))
+            except Exception as e:
+                print(
+                    f"Caught exception while importing a map: {str(e)}. Skipping it...\n \
+Problematic map: {map_path}")
+                continue
         return maps
 
     def GetRandomDifficulty(self):
