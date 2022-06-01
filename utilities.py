@@ -36,6 +36,17 @@ class Logic:
         threading.Thread(target=self._loop, args=(), daemon=True).start()
 
 
+class HitObject(object):
+    def __init__(self, x, y, offset, objtype, hitsound=0, objectParams="", hitSample=""):
+        self.x = int(x)
+        self.y = int(y)
+        self.offset = int(offset)
+        self.objtype = objtype
+        self.hitsound = hitsound
+        self.objectParams = objectParams
+        self.hitSample = hitSample
+
+
 class Map(object):
     def __init__(self, path: str):
         self.path = path
@@ -43,7 +54,16 @@ class Map(object):
         self.background = dict(self.beatmap.events)['0'][1].replace('"', '')
         self.sr_list = calculateStarRating(
             filepath=self.path, allCombinations=True)
+        self.hitObjects = self.ParseHitObjectData()
         self.nm_sr = self.sr_list['nomod']
+
+    def ParseHitObjectData(self) -> list:
+        hitObjects = []
+        for i in self.beatmap.hitobjects:
+            _ho = i.split(",")
+            hitObjects.append(
+                HitObject(_ho[0], _ho[1], _ho[2], _ho[3]))
+        return hitObjects
 
 
 class Mapset(object):
@@ -94,7 +114,10 @@ class MapCollector:
         return random.choice(self._maps)
 
     def GetRandomMap(self) -> Map:
-        return self.GetRandomMapset().GetRandomDifficulty()
+        try:
+            return self.GetRandomMapset().GetRandomDifficulty()
+        except:
+            return self.GetRandomMap()
 
     def LoadCache(self):
         print("Loading maps from cache... ", end="")
@@ -117,6 +140,9 @@ class Game:
         self.size = size
         self.isBorderless = isBorderless
         self.gamemode = gamemode
+        self.MapCollector = MapCollector()
+        self.MapCollector.Collect()
+        self.current_map = None
         pygame.init()
         pygame.display.set_caption(
             f"osu!simulation {'[b]' if isBorderless else ''}")
@@ -128,20 +154,56 @@ class Game:
 
     def Start(self):
         pygame.display.update()
+        pygame.font.init()
+
         self.logic.start_loop()
+
+        # Temporary resources. TO-DO: Make it better.
+        font = pygame.font.SysFont("Times New Roman", 16)
+        pekoraSpin = pygame.image.load(r'resources\\pekora.png')
+        pekoraSpin = pygame.transform.scale(pekoraSpin, (128, 128))
+        pekoraAngle = 0
+        pekoraSpinning = True
 
         while self.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r:
+                        self.current_map = self.MapCollector.GetRandomMap()
 
-            with self.logic.lock:
-                self.window.fill((0, 0, 0))
+            self.window.fill((0, 0, 0))
+            rotated_image = pygame.transform.rotate(
+                pekoraSpin, pekoraAngle)
+            self.window.blit(rotated_image, rotated_image.get_rect(
+                center=pekoraSpin.get_rect(topleft=(self.size[0]/2-64, self.size[1]/2-64)).center).topleft)
+            text_surface = font.render(
+                f'Map: {self.current_map.beatmap.metadata["Artist"]} - {self.current_map.beatmap.metadata["Title"]} [{self.current_map.beatmap.metadata["Version"]}] ({self.current_map.beatmap.metadata["Creator"]}) {self.current_map.nm_sr}*' if self.current_map != None else "", False, (255, 255, 255))
+            if pekoraSpinning:
+                if pekoraAngle > 360:
+                    pekoraAngle = 0
+                else:
+                    pekoraAngle += 0.777
 
-                pygame.display.update()
+            hitcricle = pygame.image.load(r'resources\\hitcircle.png')
+            if self.current_map != None:
+                for hitobject in self.current_map.hitObjects:
+                    self.window.blit(
+                        hitcricle, (int(hitobject.x), int(hitobject.y)))
+
+            self.window.blit(text_surface, (0, 0))
+
+            pygame.display.update()
 
         pygame.time.wait(10)
         pygame.quit()
 
     def LoadMap(self, map: Map):
+        self.current_map = map
+        self.RenderMap()
+        return
+
+    def RenderMap(self):
+
         return
