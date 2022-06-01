@@ -5,10 +5,12 @@ import numpy as np
 from enum import Enum
 from glob import glob
 import random
+import hashlib
 from map_parser.map_parser import MapParser
 from osu_sr_calculator import calculateStarRating
 from based import *
 import os
+import gc
 
 
 class Gamemode(Enum):
@@ -69,10 +71,20 @@ Problematic map: {map_path}")
 class MapCollector:
     def __init__(self, pathTo: str = "maps/*"):
         self.path = pathTo
+        self._maps = []
+        self._cachedPaths = []
 
     def Collect(self) -> None:
-        self._maps = [Mapset(x) if x.split("\\")[1] != "Failed" else None
-                      for x in glob(self.path, recursive=True)]
+        if os.path.isfile('maps.cache'):
+            self.LoadCache()
+
+        for mapset in glob(self.path, recursive=True):
+            if mapset.split("\\")[1] != "Failed" and not (hashlib.md5(mapset.encode()).hexdigest() in self._cachedPaths):
+                self._maps.append(Mapset(mapset))
+        self._maps = [x for x in self._maps if x is not None]
+
+        del self._cachedPaths
+        gc.collect()
 
     def GetMapset(self, index: int) -> Mapset:
         return self._maps[index] if len(self._maps) > index else None
@@ -83,14 +95,27 @@ class MapCollector:
     def GetRandomMap(self) -> Map:
         return self.GetRandomMapset().GetRandomDifficulty()
 
+    def LoadCache(self):
+        print("Loading maps from cache... ", end="")
+        with open('maps.cache', 'rb') as c:
+            self._maps = list(np.load(c, allow_pickle=True))
+            self._cachedPaths = [hashlib.md5(
+                x.path.encode()).hexdigest() for x in self._maps]
+        print("Done.")
+
+    def CacheSave(self):
+        print("Saving maps to cache... ", end="")
+        with (open('maps.cache', 'wb') as c, open('maps.cache.bak', 'wb') as b):
+            np.save(c, np.array(self._maps))
+            np.save(b, np.array(self._maps))
+        print("Done.")
+
 
 class Game:
     def __init__(self, size: int, gamemode: Gamemode, isBorderless: bool = False):
         self.size = size
         self.isBorderless = isBorderless
         self.gamemode = gamemode
-        self.MapCollector = MapCollector()
-        self.MapCollector.Collect()
         pygame.init()
         pygame.display.set_caption(
             f"osu!simulation {'[b]' if isBorderless else ''}")

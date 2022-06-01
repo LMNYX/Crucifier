@@ -163,3 +163,12 @@ cython_debug/
 # Crucifier-specific
 
 maps/*
+*.mp3
+*.mp4
+*.wav
+*.ogg
+*.osb
+Thumbs.db
+*.osz
+*.osu
+maps.cache*
