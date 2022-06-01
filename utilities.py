@@ -85,6 +85,7 @@ class MapCollector:
 
         del self._cachedPaths
         gc.collect()
+        self.CacheSave()
 
     def GetMapset(self, index: int) -> Mapset:
         return self._maps[index] if len(self._maps) > index else None
