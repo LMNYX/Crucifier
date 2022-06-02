@@ -116,7 +116,9 @@ class MapCollector:
     def GetRandomMap(self) -> Map:
         try:
             return self.GetRandomMapset().GetRandomDifficulty()
-        except:
+        except Exception as err:
+            if isinstance(err, IndexError):
+                print("there's no maps folder dumbass")
             return self.GetRandomMap()
 
     def LoadCache(self):
@@ -195,10 +197,10 @@ class Game:
                     pekoraAngle += 0.555
 
             hitcricle = pygame.image.load(r'resources\\hitcircle.png')
-            if self.current_map != None:
-                _test += 1
+            if self.current_map is not None:
+                _test += self.clock.get_time()
                 for i in self.current_map.hitObjects:
-                    if(i.offset < _test and i.offset > _test-1000):
+                    if _test-1000 < i.offset < _test :
                         hitcricle.set_alpha(
                             300 + 255 + (i.offset-_test) if i.offset-_test < 0 else 0)
                         self.window.blit(hitcricle, hitcricle.get_rect(
