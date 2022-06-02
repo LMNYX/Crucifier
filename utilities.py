@@ -36,7 +36,7 @@ class Logic:
         threading.Thread(target=self._loop, args=(), daemon=True).start()
 
 
-class HitObject(object):
+class HitObject:
     def __init__(self, x, y, offset, objtype, hitsound=0, objectParams="", hitSample=""):
         self.x = int(x)
         self.y = int(y)
@@ -47,7 +47,7 @@ class HitObject(object):
         self.hitSample = hitSample
 
 
-class Map(object):
+class Map:
     def __init__(self, path: str):
         self.path = path
         self.beatmap = MapParser(self.path)
@@ -66,7 +66,7 @@ class Map(object):
         return hitObjects
 
 
-class Mapset(object):
+class Mapset:
     def __init__(self, path: str):
         self.path = path
         self.name = os.path.basename(path)
