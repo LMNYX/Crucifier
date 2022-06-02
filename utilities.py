@@ -11,6 +11,7 @@ from osu_sr_calculator import calculateStarRating
 from based import *
 import os
 import gc
+from typing import Sequence
 
 
 class Gamemode(Enum):
@@ -146,8 +147,11 @@ class MapCollector:
 
 
 class Game:
-    def __init__(self, size: int, gamemode: Gamemode, isBorderless: bool = False):
+    osu_pixel_playfield = (640, 512)
+    def __init__(self, size: Sequence[int], gamemode: Gamemode, isBorderless: bool = False):
         self.size = size
+        self.playfield_size = tuple(map(lambda x: round(x*0.8), size))
+        print(self.playfield_size)
         self.isBorderless = isBorderless
         self.gamemode = gamemode
         self.MapCollector = MapCollector()
@@ -169,6 +173,9 @@ class Game:
         font = pygame.font.SysFont("Times New Roman", 16)
         pekoraSpin = pygame.image.load(r'resources\\pekora.png')
         pekoraSpin = pygame.transform.scale(pekoraSpin, (128, 128))
+        hitcircle = pygame.image.load(r'resources\\hitcircle.png')
+
+        placement_offset = [round((self.size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
 
         pekoraAngle = 0
         pekoraSpinning = True
@@ -189,6 +196,8 @@ class Game:
                             continue
                         _firstCircleOffset = self.current_map.hitObjects[0].offset
                         _lastCircleOffset = self.current_map.hitObjects[-1].offset
+                        size = (54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2*self.playfield_size[0]/self.osu_pixel_playfield[0]
+                        hitcircle = pygame.transform.scale(hitcircle, (size, size))
                         pekoraSpinning = False
                         _currentMapOffset = 0
                     if event.key == pygame.K_d:
@@ -214,7 +223,6 @@ class Game:
                 else:
                     pekoraAngle += 0.555
 
-            hitcricle = pygame.image.load(r'resources\\hitcircle.png')
             if self.current_map is not None:
                 _currentMapOffset += self.clock.get_time(
                 ) if beatmap_started else self.current_map.hitObjects[0].offset - self.current_map.preempt
@@ -224,10 +232,10 @@ class Game:
                     if i.offset - self.current_map.preempt <= _currentMapOffset <= i.offset:
                         # Time at which circle becomes 100% opacity
                         clear = i.offset - self.current_map.preempt + self.current_map.fadein
-                        hitcricle.set_alpha(255 if _currentMapOffset >= clear else 255 - round(
+                        hitcircle.set_alpha(255 if _currentMapOffset >= clear else 255 - round(
                             (clear - _currentMapOffset) / self.current_map.fadein * 255))
-                        self.window.blit(hitcricle, hitcricle.get_rect(
-                            center=hitcricle.get_rect(topleft=(i.x-64, i.y-64)).center).topleft)
+                        size = hitcircle.get_rect()
+                        self.window.blit(hitcircle, (i.x + placement_offset[0] + size[0], i.y + placement_offset[1] + size[0]))
 
             if DisplayDebug:
                 self.window.blit(text_surface, (0, 0))
