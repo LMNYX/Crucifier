@@ -1,4 +1,5 @@
 import threading
+from tkinter import E
 import pygame
 import time
 import numpy as np
@@ -117,6 +118,11 @@ class MapCollector:
         try:
             return self.GetRandomMapset().GetRandomDifficulty()
         except Exception as err:
+            try:
+                raise err
+            except IndexError:
+                print("No maps found.")
+                return
             return self.GetRandomMap()
 
     def LoadCache(self):
@@ -163,6 +169,7 @@ class Game:
         pekoraAngle = 0
         pekoraSpinning = True
         _test = 0
+        _firstCircleOffset = -1
         DisplayDebug = True
 
         while self.running:
@@ -172,16 +179,21 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r:
                         self.current_map = self.MapCollector.GetRandomMap()
+                        if self.current_map == None:
+                            continue
+                        _firstCircleOffset = self.current_map.hitObjects[0].offset
                         pekoraSpinning = False
                         _test = 0
                     if event.key == pygame.K_d:
                         DisplayDebug = not DisplayDebug
+                    if event.key == pygame.K_SPACE:
+                        _test = _firstCircleOffset
 
             self.window.fill((0, 0, 0))
             text_surface = font.render(
                 f'Map: {self.current_map.beatmap.metadata["Artist"]} - {self.current_map.beatmap.metadata["Title"]} [{self.current_map.beatmap.metadata["Version"]}] ({self.current_map.beatmap.metadata["Creator"]}) {self.current_map.nm_sr}*' if self.current_map != None else "No map loaded.", False, (255, 255, 255))
             offsetRender = font.render(
-                f'Offset: {_test}', False, (255, 255, 255))
+                f'Offset: {_test} / First HitObject: {_firstCircleOffset}', False, (255, 255, 255))
             tickRender = font.render(
                 f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
             if pekoraSpinning:
@@ -198,7 +210,7 @@ class Game:
             if self.current_map is not None:
                 _test += self.clock.get_time()
                 for i in self.current_map.hitObjects:
-                    if _test-1000 <= i.offset <= _test :
+                    if _test-1000 <= i.offset <= _test:
                         hitcricle.set_alpha(
                             300 + 255 + (i.offset-_test) if i.offset-_test < 0 else 0)
                         self.window.blit(hitcricle, hitcricle.get_rect(
