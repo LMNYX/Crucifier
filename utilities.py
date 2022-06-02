@@ -187,7 +187,7 @@ class Game:
                         DisplayDebug = not DisplayDebug
                     if event.key == pygame.K_SPACE:
                         if _currentMapOffset < _firstCircleOffset-3000:
-                            _currentMapOffset = _firstCircleOffset
+                            _currentMapOffset = _firstCircleOffset-2500
 
             self.window.fill((0, 0, 0))
             text_surface = font.render(
