@@ -95,13 +95,14 @@ Problematic map: {map_path}")
 
 
 class MapCollector:
-    def __init__(self, pathTo: str = "maps/*"):
+    def __init__(self, pathTo: str = "maps/*", isCachingEnabled=True):
         self.path = pathTo
         self._maps = []
         self._cachedPaths = []
+        self.isCachingEnabled = isCachingEnabled
 
     def Collect(self) -> None:
-        if os.path.isfile('maps.cache'):
+        if os.path.isfile('maps.cache') and self.isCachingEnabled:
             self.LoadCache()
 
         for mapset in glob(self.path, recursive=True):
@@ -111,7 +112,8 @@ class MapCollector:
 
         del self._cachedPaths
         gc.collect()
-        self.CacheSave()
+        if self.isCachingEnabled:
+            self.CacheSave()
 
     def GetMapset(self, index: int) -> Mapset:
         return self._maps[index] if len(self._maps) > index else None
@@ -148,13 +150,13 @@ class MapCollector:
 
 class Game:
     osu_pixel_playfield = (640, 512)
-    def __init__(self, size: Sequence[int], gamemode: Gamemode, isBorderless: bool = False):
+
+    def __init__(self, size: Sequence[int], gamemode: Gamemode, isBorderless: bool = False, isCachingEnabled=True):
         self.size = size
         self.playfield_size = tuple(map(lambda x: round(x*0.8), size))
-        print(self.playfield_size)
         self.isBorderless = isBorderless
         self.gamemode = gamemode
-        self.MapCollector = MapCollector()
+        self.MapCollector = MapCollector(isCachingEnabled=isCachingEnabled)
         self.MapCollector.Collect()
         self.current_map = None
         pygame.init()
@@ -175,7 +177,8 @@ class Game:
         pekoraSpin = pygame.transform.scale(pekoraSpin, (128, 128))
         hitcircle = pygame.image.load(r'resources\\hitcircle.png')
 
-        placement_offset = [round((self.size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
+        placement_offset = [
+            round((self.size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
 
         pekoraAngle = 0
         pekoraSpinning = True
@@ -196,8 +199,10 @@ class Game:
                             continue
                         _firstCircleOffset = self.current_map.hitObjects[0].offset
                         _lastCircleOffset = self.current_map.hitObjects[-1].offset
-                        size = (54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2*self.playfield_size[0]/self.osu_pixel_playfield[0]
-                        hitcircle = pygame.transform.scale(hitcircle, (size, size))
+                        size = (
+                            54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2*self.playfield_size[0]/self.osu_pixel_playfield[0]
+                        hitcircle = pygame.transform.scale(
+                            hitcircle, (size, size))
                         pekoraSpinning = False
                         _currentMapOffset = 0
                     if event.key == pygame.K_d:
@@ -235,7 +240,8 @@ class Game:
                         hitcircle.set_alpha(255 if _currentMapOffset >= clear else 255 - round(
                             (clear - _currentMapOffset) / self.current_map.fadein * 255))
                         size = hitcircle.get_rect()
-                        self.window.blit(hitcircle, (i.x + placement_offset[0] + size[0], i.y + placement_offset[1] + size[0]))
+                        self.window.blit(
+                            hitcircle, (i.x + placement_offset[0] + size[0], i.y + placement_offset[1] + size[0]))
 
             if DisplayDebug:
                 self.window.blit(text_surface, (0, 0))
