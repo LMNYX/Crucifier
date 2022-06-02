@@ -146,7 +146,7 @@ class Game:
         pygame.init()
         pygame.display.set_caption(
             f"osu!simulation {'[b]' if isBorderless else ''}")
-
+        self.clock = pygame.time.Clock()
         self.window = pygame.display.set_mode(
             size, pygame.NOFRAME if isBorderless else 0)
         self.running = True
@@ -159,9 +159,11 @@ class Game:
         font = pygame.font.SysFont("Times New Roman", 16)
         pekoraSpin = pygame.image.load(r'resources\\pekora.png')
         pekoraSpin = pygame.transform.scale(pekoraSpin, (128, 128))
+
         pekoraAngle = 0
         pekoraSpinning = True
         _test = 0
+        DisplayDebug = True
 
         while self.running:
             for event in pygame.event.get():
@@ -172,12 +174,16 @@ class Game:
                         self.current_map = self.MapCollector.GetRandomMap()
                         pekoraSpinning = False
                         _test = 0
+                    if event.key == pygame.K_d:
+                        DisplayDebug = not DisplayDebug
 
             self.window.fill((0, 0, 0))
             text_surface = font.render(
                 f'Map: {self.current_map.beatmap.metadata["Artist"]} - {self.current_map.beatmap.metadata["Title"]} [{self.current_map.beatmap.metadata["Version"]}] ({self.current_map.beatmap.metadata["Creator"]}) {self.current_map.nm_sr}*' if self.current_map != None else "No map loaded.", False, (255, 255, 255))
             offsetRender = font.render(
                 f'Offset: {_test}', False, (255, 255, 255))
+            tickRender = font.render(
+                f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
             if pekoraSpinning:
                 rotated_image = pygame.transform.rotate(
                     pekoraSpin, pekoraAngle)
@@ -190,16 +196,21 @@ class Game:
 
             hitcricle = pygame.image.load(r'resources\\hitcircle.png')
             if self.current_map != None:
-                _test += 10
+                _test += 1
                 for i in self.current_map.hitObjects:
                     if(i.offset < _test and i.offset > _test-1000):
+                        hitcricle.set_alpha(
+                            300 + 255 + (i.offset-_test) if i.offset-_test < 0 else 0)
                         self.window.blit(hitcricle, hitcricle.get_rect(
                             center=hitcricle.get_rect(topleft=(i.x-64, i.y-64)).center).topleft)
 
-            self.window.blit(text_surface, (0, 0))
-            self.window.blit(offsetRender, (0, 21))
+            if DisplayDebug:
+                self.window.blit(text_surface, (0, 0))
+                self.window.blit(offsetRender, (0, 21))
+                self.window.blit(tickRender, (0, 42))
 
             pygame.display.update()
+            self.clock.tick(1000)
 
         pygame.time.wait(10)
         pygame.quit()
