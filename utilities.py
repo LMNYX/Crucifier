@@ -56,6 +56,9 @@ class Map:
             filepath=self.path, allCombinations=True)
         self.hitObjects = self.ParseHitObjectData()
         self.nm_sr = self.sr_list['nomod']
+        ar = int(self.beatmap.difficulty["ApproachRate"])
+        self.preempt = 1200 + 600 * (5 - ar) / 5 if ar < 5 else 1200 - 750 * (ar - 5) / 5
+        self.fadein = 800 + 400 * (5 - ar) / 5 if ar < 5 else 800 - 500 * (ar - 5) / 5
 
     def ParseHitObjectData(self) -> list:
         hitObjects = []
@@ -170,6 +173,7 @@ class Game:
         _currentMapOffset = 0
         _firstCircleOffset = -1
         DisplayDebug = True
+        beatmap_started = False
 
         while self.running:
             for event in pygame.event.get():
@@ -208,11 +212,12 @@ class Game:
 
             hitcricle = pygame.image.load(r'resources\\hitcircle.png')
             if self.current_map is not None:
-                _currentMapOffset += self.clock.get_time()
+                _currentMapOffset += self.clock.get_time() if beatmap_started else self.current_map.hitObjects[0].offset - self.current_map.preempt
+                if beatmap_started is False: beatmap_started = True
                 for i in self.current_map.hitObjects:
-                    if _currentMapOffset-1000 <= i.offset <= _currentMapOffset:
-                        hitcricle.set_alpha(
-                            300 + 255 + (i.offset-_currentMapOffset) if i.offset-_currentMapOffset < 0 else 0)
+                    if i.offset - self.current_map.preempt <= _currentMapOffset <= i.offset:
+                        clear = i.offset - self.current_map.preempt + self.current_map.fadein  # Time at which circle becomes 100% opacity
+                        hitcricle.set_alpha(255 if _currentMapOffset >= clear else 255 - round((clear - _currentMapOffset) / self.current_map.fadein * 255))
                         self.window.blit(hitcricle, hitcricle.get_rect(
                             center=hitcricle.get_rect(topleft=(i.x-64, i.y-64)).center).topleft)
 
