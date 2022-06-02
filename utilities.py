@@ -169,6 +169,7 @@ class Game:
         pekoraSpinning = True
         _currentMapOffset = 0
         _firstCircleOffset = -1
+        _lastCircleOffset = 1
         DisplayDebug = True
 
         while self.running:
@@ -181,6 +182,7 @@ class Game:
                         if self.current_map == None:
                             continue
                         _firstCircleOffset = self.current_map.hitObjects[0].offset
+                        _lastCircleOffset = self.current_map.hitObjects[-1].offset
                         pekoraSpinning = False
                         _currentMapOffset = 0
                     if event.key == pygame.K_d:
@@ -193,7 +195,7 @@ class Game:
             text_surface = font.render(
                 f'Map: {self.current_map.beatmap.metadata["Artist"]} - {self.current_map.beatmap.metadata["Title"]} [{self.current_map.beatmap.metadata["Version"]}] ({self.current_map.beatmap.metadata["Creator"]}) {self.current_map.nm_sr}*' if self.current_map != None else "No map loaded.", False, (255, 255, 255))
             offsetRender = font.render(
-                f'Offset: {_currentMapOffset} / First HitObject: {_firstCircleOffset}', False, (255, 255, 255))
+                f'Offset: {_currentMapOffset} / First HitObject: {_firstCircleOffset} / Last HitObject: {_lastCircleOffset}', False, (255, 255, 255))
             tickRender = font.render(
                 f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
             if pekoraSpinning:
@@ -220,6 +222,11 @@ class Game:
                 self.window.blit(text_surface, (0, 0))
                 self.window.blit(offsetRender, (0, 21))
                 self.window.blit(tickRender, (0, 42))
+
+            if _currentMapOffset > _lastCircleOffset+3000:
+                self.current_map = None
+                # TO-DO: Should initialize a new map here.
+                # But I'll do that later, because I'll revamp all that shit :Chatting:
 
             pygame.display.update()
             self.clock.tick(1000)
