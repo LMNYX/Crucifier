@@ -1,5 +1,4 @@
 import threading
-from tkinter import E
 import pygame
 import time
 import numpy as np
