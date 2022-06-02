@@ -186,7 +186,7 @@ class Game:
                     if event.key == pygame.K_d:
                         DisplayDebug = not DisplayDebug
                     if event.key == pygame.K_SPACE:
-                        if _currentMapOffset < _firstCircleOffset:
+                        if _currentMapOffset < _firstCircleOffset-3000:
                             _currentMapOffset = _firstCircleOffset
 
             self.window.fill((0, 0, 0))
