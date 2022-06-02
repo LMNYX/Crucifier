@@ -94,7 +94,15 @@ Problematic map: {map_path}")
         return random.choice(self.maps)
 
 
+class Cache:
+    def __init__(self, version: int, MapArray: list):
+        self.Version = version
+        self.Mapsets = MapArray
+
+
 class MapCollector:
+    CacheVersion = 1
+
     def __init__(self, pathTo: str = "maps/*", isCachingEnabled=True):
         self.path = pathTo
         self._maps = []
@@ -133,18 +141,28 @@ class MapCollector:
             return self.GetRandomMap()
 
     def LoadCache(self):
-        print("Loading maps from cache... ", end="")
-        with open('maps.cache', 'rb') as c:
-            self._maps = list(np.load(c, allow_pickle=True))
-            self._cachedPaths = [hashlib.md5(
-                x.path.encode()).hexdigest() for x in self._maps]
-        print("Done.")
+        try:
+            print("Loading maps from cache... ", end="")
+            with open('maps.cache', 'rb') as c:
+                CacheData = list(np.load(c, allow_pickle=True))[0]
+                if(type(CacheData) != Cache):
+                    print("Outdated.")
+                    return
+                if CacheData.Version < self.CacheVersion:
+                    print("Outdated.")
+                    return
+                self._maps = CacheData.Mapsets
+                self._cachedPaths = [hashlib.md5(
+                    x.path.encode()).hexdigest() for x in self._maps]
+            print("Done.")
+        except Exception as err:
+            print("Failed.")
 
     def CacheSave(self):
         print("Saving maps to cache... ", end="")
         with (open('maps.cache', 'wb') as c, open('maps.cache.bak', 'wb') as b):
-            np.save(c, np.array(self._maps))
-            np.save(b, np.array(self._maps))
+            np.save(c, [Cache(self.CacheVersion, np.array(self._maps))])
+            np.save(b, [Cache(self.CacheVersion, np.array(self._maps))])
         print("Done.")
 
 
@@ -213,7 +231,7 @@ class Game:
 
             self.window.fill((0, 0, 0))
             text_surface = font.render(
-                f'Map: {self.current_map.beatmap.metadata["Artist"]} - {self.current_map.beatmap.metadata["Title"]} [{self.current_map.beatmap.metadata["Version"]}] ({self.current_map.beatmap.metadata["Creator"]}) {self.current_map.nm_sr}*' if self.current_map != None else "No map loaded.", False, (255, 255, 255))
+                f'Map: {self.current_map.beatmap.metadata["Artist"]} - {self.current_map.beatmap.metadata["Title"]} [{self.current_map.beatmap.metadata["Version"]}] ({self.current_map.beatmap.metadata["Creator"]}) {round(self.current_map.nm_sr, 2)}*, AR: {self.current_map.beatmap.difficulty["ApproachRate"]}, CS: {self.current_map.beatmap.difficulty["CircleSize"]}' if self.current_map != None else "No map loaded.", False, (255, 255, 255))
             offsetRender = font.render(
                 f'Offset: {_currentMapOffset} / First HitObject: {_firstCircleOffset} / Last HitObject: {_lastCircleOffset}', False, (255, 255, 255))
             tickRender = font.render(
