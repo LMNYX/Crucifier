@@ -125,7 +125,7 @@ class GameFrameManager:
         self.pekora_angle = 0 if self.pekora_angle >= 360 else self.pekora_angle + 0.555
 
     def draw_background(self):
-        if(self.background == None):
+        if self.background is None:
             return
         self.background.set_alpha(
             max(50, min(self.current_map.hit_objects[0].time.total_seconds()*1000-self.current_offset-500, 255)))
