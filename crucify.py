@@ -6,7 +6,7 @@ import argparse
 parser = argparse.ArgumentParser(description='osu!simulation')
 parser.add_argument('--gamemode', '-g', type=int, nargs='+',
                     help='gamemode that is supposed to be played')
-parser.add_argument('--width', '-sw', type=int, default=600)
+parser.add_argument('--width', '-sw', type=int, default=640)
 parser.add_argument('--height', '-sh', type=int, default=480)
 parser.add_argument("--fps", '-f', type=int, default=960)
 parser.add_argument('--borderless', '-b', action='store_true')
