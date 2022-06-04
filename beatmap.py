@@ -27,7 +27,8 @@ class Map:
         self.beatmap = MapParser(self.path)
         self.background = dict(self.beatmap.events)['0'][1].replace('"', '')
         try:
-            self.sr_list = calculateStarRating(filepath=self.path, allCombinations=True)
+            self.sr_list = calculateStarRating(
+                filepath=self.path, allCombinations=True)
             self.nm_sr = self.sr_list['nomod']
         except AttributeError as e:
             # TODO: Consider using osu!api v2 to get the star rating of the map if it's submitted [use osu.py ;)]

@@ -85,7 +85,7 @@ class GameFrameManager:
             self.object_manager.preempt - 3000
         self.background = pygame.image.load(
             f"{path.dirname(self.current_map.path)}/{self.current_map.background}")
-        background_ratio = self.size[0]/self.background.get_size()[0] + 0.1
+        background_ratio = self.size[1]/self.background.get_size()[1] + 0.1
         self.background = pygame.transform.smoothscale(self.background, (
             self.background.get_size()[0] * background_ratio,
             self.background.get_size()[1] * background_ratio))
