@@ -133,7 +133,7 @@ class GameFrameManager:
 
 
 class Game:
-    def __init__(self, size: Sequence[int], gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True):
+    def __init__(self, size: Sequence[int], fps: int, gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True, ):
         # Should be performed before initializing pygame
         self.map_collector = MapCollector(is_caching_enabled=is_caching_enabled)
         self.map_collector.collect()
@@ -143,6 +143,7 @@ class Game:
         self.is_borderless = is_borderless
         self.gamemode = gamemode
         self.current_map = None
+        self.fps = fps
 
         # Initialize pygame
         pygame.init()
@@ -219,7 +220,7 @@ class Game:
             self.draw()
 
             pygame.display.update()
-            self.clock.tick(1000)
+            self.clock.tick(self.fps)
 
         pygame.time.wait(10)
         pygame.quit()
