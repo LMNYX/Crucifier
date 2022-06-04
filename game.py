@@ -1,7 +1,6 @@
 import threading
 import pygame
 import time
-from math import ceil
 from typing import Sequence
 from os import path
 from constants import *
