@@ -5,6 +5,7 @@ from cache import Cache
 import os
 import random
 import hashlib
+from slider import beatmap
 import gc
 import numpy as np
 import traceback
@@ -36,7 +37,9 @@ class Map:
                   f"    {e}")
             self.sr_list = {}
             self.nm_sr = 0
-        self.hit_objects = self.parse_hit_object_data()
+        with open(self.path, 'r') as osu_file:
+            self.hit_objects = beatmap.Beatmap.from_file(
+                osu_file).hit_objects()
 
     def parse_hit_object_data(self) -> list:
         hit_objects = []
