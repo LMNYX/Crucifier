@@ -71,14 +71,15 @@ class Mapset:
 class MapCollector:
     cache_version = 2
 
-    def __init__(self, path_to: str = "maps/*", is_caching_enabled=True):
+    def __init__(self, path_to: str = "maps/*", is_caching_enabled=True, should_reset_cache=False):
         self.path = path_to
         self._maps = []
         self._cached_paths = []
         self.is_caching_enabled = is_caching_enabled
+        self.should_reset_cache = should_reset_cache
 
     def collect(self) -> None:
-        if os.path.isfile('maps.cache') and self.is_caching_enabled:
+        if os.path.isfile('maps.cache') and self.is_caching_enabled and not self.should_reset_cache:
             self.load_cache()
 
         for mapset in glob(self.path, recursive=True):

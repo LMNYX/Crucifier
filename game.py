@@ -146,10 +146,10 @@ class GameFrameManager:
 
 
 class Game:
-    def __init__(self, size: Sequence[int], fps: int, gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True, is_background_enabled=True):
+    def __init__(self, size: Sequence[int], fps: int, gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True, is_background_enabled=True, should_reset_cache=False):
         # Should be performed before initializing pygame
         self.map_collector = MapCollector(
-            is_caching_enabled=is_caching_enabled)
+            is_caching_enabled=is_caching_enabled, should_reset_cache=should_reset_cache)
         self.map_collector.collect()
 
         # Game attributes
