@@ -230,6 +230,7 @@ class Game:
         elif self.current_map is not None:
             if self.is_background_enabled:
                 self.frame_manager.draw_background()
+
             self.frame_manager.draw_objects()
             if self.frame_manager.map_ended:
                 self.on_start_screen = True

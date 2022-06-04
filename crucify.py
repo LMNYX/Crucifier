@@ -24,5 +24,6 @@ print("Please wait until the maps are loaded...")
 
 game = Game([args.width, args.height], args.fps, gamemode,
             is_borderless=args.borderless,
-            is_caching_enabled=args.no_cache, is_background_enabled=args.no_background)
+            is_caching_enabled=args.no_cache,
+            is_background_enabled=args.no_background)
 game.run()
