@@ -1,6 +1,7 @@
 import threading
 import pygame
 import time
+from math import ceil
 from typing import Sequence
 from os import path
 from constants import *
@@ -85,10 +86,10 @@ class GameFrameManager:
             self.object_manager.preempt - 3000
         self.background = pygame.image.load(
             f"{path.dirname(self.current_map.path)}/{self.current_map.background}")
+        background_ratio = self.size[0]/self.background.get_size()[0]
         self.background = pygame.transform.scale(self.background, (
-            self.background.get_size(
-            )[0] * (self.size[0] / self.background.get_size()[0]),
-            self.background.get_size()[1] * (self.size[1] / self.background.get_size()[1])))
+            self.background.get_size()[0] * background_ratio,
+            self.background.get_size()[1] * background_ratio))
 
     @property
     def can_skip(self):
@@ -128,7 +129,8 @@ class GameFrameManager:
             return
         self.background.set_alpha(
             max(50, min(self.current_map.hit_objects[0].offset-self.current_offset-500, 255)))
-        self.window.blit(self.background, (0, 0))
+        self.window.blit(
+            self.background, (self.size[0]/2-(self.background.get_size()[0]/2), self.size[1]/2-(self.background.get_size()[1]/2)))
 
     def draw_objects(self):
         self.current_offset += self.clock.get_time()
