@@ -65,7 +65,7 @@ class GameFrameManager:
         self.current_offset = 0
 
         pekora = pygame.image.load(r'resources\\pekora.png')
-        self.pekora = pygame.transform.scale(pekora, (128, 128))
+        self.pekora = pygame.transform.smoothscale(pekora, (128, 128))
         self.pekora_angle = 0
 
         self.original_hitcircle = pygame.image.load(
@@ -79,14 +79,14 @@ class GameFrameManager:
         self.object_manager.load_hit_objects(beatmap)
         size = (
             54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2 * self.osu_pixel_multiplier
-        self.hitcircle = pygame.transform.scale(
+        self.hitcircle = pygame.transform.smoothscale(
             self.original_hitcircle, (size, size))
         self.current_offset = self.current_map.hit_objects[0].offset - \
             self.object_manager.preempt - 3000
         self.background = pygame.image.load(
             f"{path.dirname(self.current_map.path)}/{self.current_map.background}")
         background_ratio = self.size[0]/self.background.get_size()[0]
-        self.background = pygame.transform.scale(self.background, (
+        self.background = pygame.transform.smoothscale(self.background, (
             self.background.get_size()[0] * background_ratio,
             self.background.get_size()[1] * background_ratio))
 
