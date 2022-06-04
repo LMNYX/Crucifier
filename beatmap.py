@@ -1,0 +1,124 @@
+from map_parser.map_parser import MapParser
+from osu_sr_calculator import calculateStarRating
+from glob import glob
+from cache import Cache
+import os
+import random
+import hashlib
+import gc
+import numpy as np
+
+
+class HitObject:
+    def __init__(self, x, y, offset, objtype, hitsound=0, object_params="", hit_sample=""):
+        self.x = int(x)
+        self.y = int(y)
+        self.offset = int(offset)
+        self.objtype = objtype
+        self.hitsound = hitsound
+        self.objectParams = object_params
+        self.hitSample = hit_sample
+
+
+class Map:
+    def __init__(self, path: str):
+        self.path = path
+        self.beatmap = MapParser(self.path)
+        self.background = dict(self.beatmap.events)['0'][1].replace('"', '')
+        self.sr_list = calculateStarRating(
+            filepath=self.path, allCombinations=True)
+        self.hit_objects = self.parse_hit_object_data()
+        self.nm_sr = self.sr_list['nomod']
+
+    def parse_hit_object_data(self) -> list:
+        hit_objects = []
+        for i in self.beatmap.hitobjects:
+            _ho = i.split(",")
+            hit_objects.append(
+                HitObject(_ho[0], _ho[1], _ho[2], _ho[3]))
+        return hit_objects
+
+
+class Mapset:
+    def __init__(self, path: str):
+        self.path = path
+        self.name = os.path.basename(path)
+        self.maps = self.load_maps()
+
+    def load_maps(self):
+        maps = []
+        for map_path in glob(self.path + '/*.osu'):
+            try:
+                maps.append(Map(map_path))
+            except Exception as e:
+                print(f"Caught exception while importing a map: {str(e)}. "
+                      f"Skipping it...\n Problematic map: {map_path}")
+                continue
+        return maps
+
+    def get_random_difficulty(self):
+        return random.choice(self.maps)
+
+
+class MapCollector:
+    cache_version = 2
+
+    def __init__(self, path_to: str = "maps/*", is_caching_enabled=True):
+        self.path = path_to
+        self._maps = []
+        self._cached_paths = []
+        self.is_caching_enabled = is_caching_enabled
+
+    def collect(self) -> None:
+        if os.path.isfile('maps.cache') and self.is_caching_enabled:
+            self.load_cache()
+
+        for mapset in glob(self.path, recursive=True):
+            if mapset.split("\\")[1] != "Failed" and not (hashlib.md5(mapset.encode()).hexdigest() in self._cached_paths):
+                self._maps.append(Mapset(mapset))
+        self._maps = [x for x in self._maps if x is not None]
+
+        del self._cached_paths
+        gc.collect()
+        if self.is_caching_enabled:
+            self.save_cache()
+
+    def get_mapset(self, index: int) -> Mapset:
+        return self._maps[index] if len(self._maps) > index else None
+
+    def get_random_mapset(self) -> Mapset:
+        return random.choice(self._maps)
+
+    def get_random_map(self) -> Map:
+        try:
+            return self.get_random_mapset().get_random_difficulty()
+        except Exception as err:
+            try:
+                raise err
+            except IndexError:
+                print("No maps found.")
+
+    def load_cache(self):
+        try:
+            print("Loading maps from cache... ", end="")
+            with open('maps.cache', 'rb') as c:
+                cache_data = list(np.load(c, allow_pickle=True))[0]
+                if not isinstance(cache_data, Cache):
+                    print("Outdated.")
+                    return
+                if cache_data.version < self.cache_version:
+                    print("Outdated.")
+                    return
+                self._maps = cache_data.mapsets
+                self._cached_paths = [hashlib.md5(
+                    x.path.encode()).hexdigest() for x in self._maps]
+            print("Done.")
+        except Exception as err:
+            print(f"Failed to load cache: {err}")
+
+    def save_cache(self):
+        print("Saving maps to cache... ", end="")
+        for file in (open('maps.cache', 'wb'), open('maps.cache.bak', 'wb')):
+            np.save(file, [Cache(self.cache_version, np.array(self._maps))])
+            file.close()
+        print("Done.")
