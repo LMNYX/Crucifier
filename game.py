@@ -2,6 +2,7 @@ import threading
 import pygame
 import time
 from typing import Sequence
+from os import path
 from constants import *
 from enums import Gamemode
 from beatmap import MapCollector
@@ -71,6 +72,8 @@ class GameFrameManager:
             r'resources\\hitcircle.png')
         self.hitcircle = None
 
+        self.background = None
+
     def load_map(self, beatmap):
         self.current_map = beatmap
         self.object_manager.load_hit_objects(beatmap)
@@ -79,7 +82,13 @@ class GameFrameManager:
         self.hitcircle = pygame.transform.scale(
             self.original_hitcircle, (size, size))
         self.current_offset = self.current_map.hit_objects[0].offset - \
-            self.object_manager.preempt
+            self.object_manager.preempt - 3000
+        self.background = pygame.image.load(
+            f"{path.dirname(self.current_map.path)}/{self.current_map.background}")
+        self.background = pygame.transform.scale(self.background, (
+            self.background.get_size(
+            )[0] * (self.size[0] / self.background.get_size()[0]),
+            self.background.get_size()[1] * (self.size[1] / self.background.get_size()[1])))
 
     @property
     def can_skip(self):
@@ -114,6 +123,13 @@ class GameFrameManager:
                                  topleft=(self.size[0] / 2 - 64, self.size[1] / 2 - 64)).center).topleft)
         self.pekora_angle = 0 if self.pekora_angle >= 360 else self.pekora_angle + 0.555
 
+    def draw_background(self):
+        if(self.background == None):
+            return
+        self.background.set_alpha(
+            max(50, min(self.current_map.hit_objects[0].offset-self.current_offset-500, 255)))
+        self.window.blit(self.background, (0, 0))
+
     def draw_objects(self):
         self.current_offset += self.clock.get_time()
         for hit_object in self.object_manager.get_hit_objects_for_offset(self.current_offset):
@@ -129,7 +145,7 @@ class GameFrameManager:
 
 
 class Game:
-    def __init__(self, size: Sequence[int], fps: int, gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True, ):
+    def __init__(self, size: Sequence[int], fps: int, gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True, is_background_enabled=True):
         # Should be performed before initializing pygame
         self.map_collector = MapCollector(
             is_caching_enabled=is_caching_enabled)
@@ -141,6 +157,7 @@ class Game:
         self.gamemode = gamemode
         self.current_map = None
         self.fps = fps
+        self.is_background_enabled = is_background_enabled
 
         # Initialize pygame
         pygame.init()
@@ -163,6 +180,7 @@ class Game:
             pygame.K_r: self.on_random_map,
             pygame.K_d: self.on_toggle_debug,
             pygame.K_SPACE: self.on_skip,
+            pygame.K_f: self.on_force_end,
         }
 
     # Event functions
@@ -187,6 +205,12 @@ class Game:
             return
         self.frame_manager.skip()
 
+    def on_force_end(self, event):
+        if self.on_start_screen:
+            return
+        self.current_map = None
+        self.on_start_screen = True
+
     # Running functions
 
     def handle_events(self):
@@ -204,6 +228,8 @@ class Game:
             self.frame_manager.draw_pekora()
 
         elif self.current_map is not None:
+            if self.is_background_enabled:
+                self.frame_manager.draw_background()
             self.frame_manager.draw_objects()
             if self.frame_manager.map_ended:
                 self.on_start_screen = True
