@@ -1,7 +1,6 @@
-import utilities
+from game import Game
+from enums import Gamemode
 import argparse
-import os
-import time
 
 #
 parser = argparse.ArgumentParser(description='osu!simulation')
@@ -14,13 +13,13 @@ parser.add_argument('--no-cache', '-nc', action='store_true')
 args = parser.parse_args()
 #
 
-gamemode = utilities.Gamemode(
-    args.gamemode[0]) if args.gamemode != None else utilities.Gamemode(0)
+gamemode = Gamemode(
+    args.gamemode[0]) if args.gamemode is not None else Gamemode(0)
 
 print("Gamemode set to:", gamemode)
 
 print("Please wait until the maps are loaded...")
 
-Game = utilities.Game([args.width, args.height],
-                      gamemode, isBorderless=args.borderless, isCachingEnabled=not args.no_cache)
-Game.Start()
+game = Game([args.width, args.height],
+            gamemode, is_borderless=args.borderless, is_caching_enabled=not args.no_cache)
+game.run()
