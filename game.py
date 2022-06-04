@@ -7,22 +7,6 @@ from enums import Gamemode
 from beatmap import MapCollector
 
 
-class Logic:
-    def __init__(self, size: int):
-        self._size = size
-        self.lock = threading.Lock()
-        self.input_list = []
-
-    def _loop(self):
-        time.sleep(0.5)
-
-        while True:
-            time.sleep(0.01)
-
-    def start_loop(self):
-        threading.Thread(target=self._loop, args=(), daemon=True).start()
-
-
 class ObjectManager:
     def __init__(self):
         self.hit_objects = None
@@ -32,8 +16,10 @@ class ObjectManager:
 
     def load_hit_objects(self, beatmap):
         ar = float(beatmap.beatmap.difficulty["ApproachRate"])
-        self.preempt = 1200 + 600 * (5 - ar) / 5 if ar < 5 else 1200 - 750 * (ar - 5) / 5
-        self.fadein = 800 + 400 * (5 - ar) / 5 if ar < 5 else 800 - 500 * (ar - 5) / 5
+        self.preempt = 1200 + 600 * \
+            (5 - ar) / 5 if ar < 5 else 1200 - 750 * (ar - 5) / 5
+        self.fadein = 800 + 400 * \
+            (5 - ar) / 5 if ar < 5 else 800 - 500 * (ar - 5) / 5
         self.hit_objects = list(beatmap.hit_objects)  # new list object
         self.obj_offset = 0
 
@@ -52,9 +38,10 @@ class ObjectManager:
             yield self.hit_objects[index-1]
 
     def get_opacity(self, hit_object, offset):
-        clear = hit_object.offset - self.preempt + self.fadein  # Time at which circle becomes 100% opacity
+        # Time at which circle becomes 100% opacity
+        clear = hit_object.offset - self.preempt + self.fadein
         return 255 if offset >= clear else 255 - round(
-                (clear - offset) / self.fadein * 255)
+            (clear - offset) / self.fadein * 255)
 
 
 class GameFrameManager:
@@ -68,8 +55,10 @@ class GameFrameManager:
         self.playfield_size = (h / osu_pixel_window[1] * osu_pixel_window[0], h) \
             if w / osu_pixel_window[0] * osu_pixel_window[1] > h \
             else (w, w / osu_pixel_window[0] * osu_pixel_window[1])
-        self.placement_offset = [round((size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
-        self.osu_pixel_multiplier = self.playfield_size[0] / osu_pixel_window[0]
+        self.placement_offset = [
+            round((size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
+        self.osu_pixel_multiplier = self.playfield_size[0] / \
+            osu_pixel_window[0]
         self.object_manager = ObjectManager()
         self.current_map = None
         self.current_offset = 0
@@ -78,15 +67,19 @@ class GameFrameManager:
         self.pekora = pygame.transform.scale(pekora, (128, 128))
         self.pekora_angle = 0
 
-        self.original_hitcircle = pygame.image.load(r'resources\\hitcircle.png')
+        self.original_hitcircle = pygame.image.load(
+            r'resources\\hitcircle.png')
         self.hitcircle = None
 
     def load_map(self, beatmap):
         self.current_map = beatmap
         self.object_manager.load_hit_objects(beatmap)
-        size = (54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2 * self.osu_pixel_multiplier
-        self.hitcircle = pygame.transform.scale(self.original_hitcircle, (size, size))
-        self.current_offset = self.current_map.hit_objects[0].offset - self.object_manager.preempt
+        size = (
+            54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2 * self.osu_pixel_multiplier
+        self.hitcircle = pygame.transform.scale(
+            self.original_hitcircle, (size, size))
+        self.current_offset = self.current_map.hit_objects[0].offset - \
+            self.object_manager.preempt
 
     @property
     def can_skip(self):
@@ -105,8 +98,10 @@ class GameFrameManager:
                                         f'CS: {self.current_map.beatmap.difficulty["CircleSize"]}'
                                         if self.current_map is not None else "No map loaded.", False,
                                         (255, 255, 255))
-        offset_render = self.font.render(f'Offset: {self.current_offset}', False, (255, 255, 255))
-        tick_render = self.font.render(f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
+        offset_render = self.font.render(
+            f'Offset: {self.current_offset}', False, (255, 255, 255))
+        tick_render = self.font.render(
+            f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
         self.window.blit(text_surface, (0, 0))
         self.window.blit(offset_render, (0, 21))
         self.window.blit(tick_render, (0, 42))
@@ -122,7 +117,8 @@ class GameFrameManager:
     def draw_objects(self):
         self.current_offset += self.clock.get_time()
         for hit_object in self.object_manager.get_hit_objects_for_offset(self.current_offset):
-            self.hitcircle.set_alpha(self.object_manager.get_opacity(hit_object, self.current_offset))
+            self.hitcircle.set_alpha(self.object_manager.get_opacity(
+                hit_object, self.current_offset))
             size = self.hitcircle.get_rect()
             self.window.blit(self.hitcircle, (hit_object.x * self.osu_pixel_multiplier + self.placement_offset[0] - size[0]//2,
                                               hit_object.y * self.osu_pixel_multiplier + self.placement_offset[1] - size[1]//2))
@@ -135,7 +131,8 @@ class GameFrameManager:
 class Game:
     def __init__(self, size: Sequence[int], fps: int, gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True, ):
         # Should be performed before initializing pygame
-        self.map_collector = MapCollector(is_caching_enabled=is_caching_enabled)
+        self.map_collector = MapCollector(
+            is_caching_enabled=is_caching_enabled)
         self.map_collector.collect()
 
         # Game attributes
@@ -148,10 +145,12 @@ class Game:
         # Initialize pygame
         pygame.init()
         pygame.font.init()
-        pygame.display.set_caption(f"osu!simulation {'[b]' if is_borderless else ''}")
+        pygame.display.set_caption(
+            f"osu!simulation {'[b]' if is_borderless else ''}")
 
         # "Helper" objects
-        self.window = pygame.display.set_mode(size, pygame.NOFRAME if is_borderless else 0)
+        self.window = pygame.display.set_mode(
+            size, pygame.NOFRAME if is_borderless else 0)
         self.clock = pygame.time.Clock()
         self.frame_manager = GameFrameManager(size, self.window, self.clock)
 
