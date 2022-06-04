@@ -29,18 +29,18 @@ class ObjectManager:
         while True:
             if index == len(self.hit_objects):
                 break
-            if offset > self.hit_objects[index].offset:
+            if offset > self.hit_objects[index].time.total_seconds()*1000:
                 self.obj_offset += 1
                 index += 1
                 continue
-            if offset < self.hit_objects[index].offset-self.preempt:
+            if offset < self.hit_objects[index].time.total_seconds()*1000-self.preempt:
                 break
             index += 1
             yield self.hit_objects[index-1]
 
     def get_opacity(self, hit_object, offset):
         # Time at which circle becomes 100% opacity
-        clear = hit_object.offset - self.preempt + self.fadein
+        clear = hit_object.time.total_seconds()*1000 - self.preempt + self.fadein
         return 255 if offset >= clear else 255 - round(
             (clear - offset) / self.fadein * 255)
 
@@ -81,7 +81,7 @@ class GameFrameManager:
             54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2 * self.osu_pixel_multiplier
         self.hitcircle = pygame.transform.smoothscale(
             self.original_hitcircle, (size, size))
-        self.current_offset = self.current_map.hit_objects[0].offset - \
+        self.current_offset = self.current_map.hit_objects[0].time.total_seconds()*1000 - \
             self.object_manager.preempt - 3000
         self.background = pygame.image.load(
             f"{path.dirname(self.current_map.path)}/{self.current_map.background}")
@@ -92,10 +92,11 @@ class GameFrameManager:
 
     @property
     def can_skip(self):
-        return self.current_offset < self.current_map.hit_objects[0].offset-3000
+        return self.current_offset < self.current_map.hit_objects[0].time.total_seconds()*1000-3000
 
     def skip(self):
-        self.current_offset = self.current_map.hit_objects[0].offset-2500
+        self.current_offset = self.current_map.hit_objects[0].time.total_seconds(
+        )*1000-2500
 
     def render_debug(self):
         text_surface = self.font.render(f'Map: {self.current_map.beatmap.metadata["Artist"]} - '
@@ -127,7 +128,7 @@ class GameFrameManager:
         if(self.background == None):
             return
         self.background.set_alpha(
-            max(50, min(self.current_map.hit_objects[0].offset-self.current_offset-500, 255)))
+            max(50, min(self.current_map.hit_objects[0].time.total_seconds()*1000-self.current_offset-500, 255)))
         self.window.blit(
             self.background, (self.size[0]/2-(self.background.get_size()[0]/2), self.size[1]/2-(self.background.get_size()[1]/2)))
 
@@ -137,12 +138,12 @@ class GameFrameManager:
             self.hitcircle.set_alpha(self.object_manager.get_opacity(
                 hit_object, self.current_offset))
             size = self.hitcircle.get_rect()
-            self.window.blit(self.hitcircle, (hit_object.x * self.osu_pixel_multiplier + self.placement_offset[0] - size[0]//2,
-                                              hit_object.y * self.osu_pixel_multiplier + self.placement_offset[1] - size[1]//2))
+            self.window.blit(self.hitcircle, (hit_object.position.x * self.osu_pixel_multiplier + self.placement_offset[0] - size[0]//2,
+                                              hit_object.position.y * self.osu_pixel_multiplier + self.placement_offset[1] - size[1]//2))
 
     @property
     def map_ended(self):
-        return self.current_offset > self.current_map.hit_objects[-1].offset
+        return self.current_offset > self.current_map.hit_objects[-1].time.total_seconds()*1000
 
 
 class Game:

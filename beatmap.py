@@ -41,14 +41,6 @@ class Map:
             self.hit_objects = beatmap.Beatmap.from_file(
                 osu_file).hit_objects()
 
-    def parse_hit_object_data(self) -> list:
-        hit_objects = []
-        for i in self.beatmap.hitobjects:
-            _ho = i.split(",")
-            hit_objects.append(
-                HitObject(_ho[0], _ho[1], _ho[2], _ho[3]))
-        return hit_objects
-
 
 class Mapset:
     def __init__(self, path: str):
