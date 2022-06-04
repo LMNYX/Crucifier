@@ -1,4 +1,6 @@
 import threading
+
+import numpy
 import pygame
 import time
 import numpy as np
@@ -11,7 +13,7 @@ from osu_sr_calculator import calculateStarRating
 from based import *
 import os
 import gc
-from typing import Sequence
+from typing import Sequence, Union
 
 
 class Gamemode(Enum):
@@ -95,7 +97,7 @@ Problematic map: {map_path}")
 
 
 class Cache:
-    def __init__(self, version: int, MapArray: list):
+    def __init__(self, version: int, MapArray: Sequence):
         self.Version = version
         self.Mapsets = MapArray
 
@@ -171,7 +173,12 @@ class Game:
 
     def __init__(self, size: Sequence[int], gamemode: Gamemode, isBorderless: bool = False, isCachingEnabled=True):
         self.size = size
-        self.playfield_size = tuple(map(lambda x: round(x*0.8), size))
+        w = size[0]*0.8
+        h = size[1]*0.8
+        self.playfield_size = (h/self.osu_pixel_playfield[1]*self.osu_pixel_playfield[0], h) \
+            if w/self.osu_pixel_playfield[0]*self.osu_pixel_playfield[1] > h \
+            else (w, w/self.osu_pixel_playfield[0]*self.osu_pixel_playfield[1])
+        self.osu_pixel_multiplier = self.playfield_size[0] / self.osu_pixel_playfield[0]
         self.isBorderless = isBorderless
         self.gamemode = gamemode
         self.MapCollector = MapCollector(isCachingEnabled=isCachingEnabled)
@@ -193,10 +200,10 @@ class Game:
         font = pygame.font.SysFont("Times New Roman", 16)
         pekoraSpin = pygame.image.load(r'resources\\pekora.png')
         pekoraSpin = pygame.transform.scale(pekoraSpin, (128, 128))
-        hitcircle = pygame.image.load(r'resources\\hitcircle.png')
+        original_hitcircle = pygame.image.load(r'resources\\hitcircle.png')
+        hitcircle = None  # defined when a new song is loaded
 
-        placement_offset = [
-            round((self.size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
+        placement_offset = [round((self.size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
 
         pekoraAngle = 0
         pekoraSpinning = True
@@ -218,9 +225,9 @@ class Game:
                         _firstCircleOffset = self.current_map.hitObjects[0].offset
                         _lastCircleOffset = self.current_map.hitObjects[-1].offset
                         size = (
-                            54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2*self.playfield_size[0]/self.osu_pixel_playfield[0]
+                            54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2*self.osu_pixel_multiplier
                         hitcircle = pygame.transform.scale(
-                            hitcircle, (size, size))
+                            original_hitcircle, (size, size))
                         pekoraSpinning = False
                         _currentMapOffset = 0
                     if event.key == pygame.K_d:
@@ -258,8 +265,7 @@ class Game:
                         hitcircle.set_alpha(255 if _currentMapOffset >= clear else 255 - round(
                             (clear - _currentMapOffset) / self.current_map.fadein * 255))
                         size = hitcircle.get_rect()
-                        self.window.blit(
-                            hitcircle, (i.x + placement_offset[0] + size[0], i.y + placement_offset[1] + size[0]))
+                        self.window.blit(hitcircle, (i.x*self.osu_pixel_multiplier + placement_offset[0], i.y*self.osu_pixel_multiplier + placement_offset[1]))
 
             if DisplayDebug:
                 self.window.blit(text_surface, (0, 0))
