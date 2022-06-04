@@ -37,7 +37,7 @@ class Map:
                   f"    {e}")
             self.sr_list = {}
             self.nm_sr = 0
-        with open(self.path, 'r') as osu_file:
+        with open(self.path, 'r', encoding='utf-8') as osu_file:
             self.hit_objects = beatmap.Beatmap.from_file(
                 osu_file).hit_objects()
 
