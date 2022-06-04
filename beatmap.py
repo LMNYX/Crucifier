@@ -7,6 +7,7 @@ import random
 import hashlib
 import gc
 import numpy as np
+import traceback
 
 
 class HitObject:
@@ -25,10 +26,16 @@ class Map:
         self.path = path
         self.beatmap = MapParser(self.path)
         self.background = dict(self.beatmap.events)['0'][1].replace('"', '')
-        self.sr_list = calculateStarRating(
-            filepath=self.path, allCombinations=True)
+        try:
+            self.sr_list = calculateStarRating(filepath=self.path, allCombinations=True)
+            self.nm_sr = self.sr_list['nomod']
+        except AttributeError as e:
+            # TODO: Consider using osu!api v2 to get the star rating of the map if it's submitted [use osu.py ;)]
+            print(f"Failed to load {self.beatmap.metadata['Artist']} - {self.beatmap.metadata['Title']} [{self.beatmap.metadata['Version']}]:\n"
+                  f"    {e}")
+            self.sr_list = {}
+            self.nm_sr = 0
         self.hit_objects = self.parse_hit_object_data()
-        self.nm_sr = self.sr_list['nomod']
 
     def parse_hit_object_data(self) -> list:
         hit_objects = []
@@ -51,7 +58,7 @@ class Mapset:
             try:
                 maps.append(Map(map_path))
             except Exception as e:
-                print(f"Caught exception while importing a map: {str(e)}. "
+                print(f"Caught exception while importing a map: {traceback.format_exc()}. "
                       f"Skipping it...\n Problematic map: {map_path}")
                 continue
         return maps
