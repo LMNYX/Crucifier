@@ -266,6 +266,10 @@ class Game:
                             (clear - _currentMapOffset) / self.current_map.fadein * 255))
                         size = hitcircle.get_rect()
                         self.window.blit(hitcircle, (i.x*self.osu_pixel_multiplier + placement_offset[0], i.y*self.osu_pixel_multiplier + placement_offset[1]))
+                if _currentMapOffset > _lastCircleOffset:
+                    beatmap_started = False
+                    self.current_map = None
+                    pekoraSpinning = True
 
             if DisplayDebug:
                 self.window.blit(text_surface, (0, 0))
