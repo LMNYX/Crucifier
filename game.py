@@ -1,4 +1,5 @@
 import pygame
+import pygame.gfxdraw  # Must be imported explicitly to work
 import numpy as np
 import math
 import time
@@ -128,6 +129,7 @@ class GameFrameManager:
         self.playfield_size = (h / osu_pixel_window[1] * osu_pixel_window[0], h) \
             if w / osu_pixel_window[0] * osu_pixel_window[1] > h \
             else (w, w / osu_pixel_window[0] * osu_pixel_window[1])
+        self.playfield_size = tuple(map(round, self.playfield_size))
         self.placement_offset = [
             round((size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
         self.osu_pixel_multiplier = self.playfield_size[0] / 512
@@ -145,6 +147,7 @@ class GameFrameManager:
         self.original_hitcircle = pygame.image.load(
             r'resources\\hitcircle.png')
         self.hitcircle = None
+        self.plain_circle = None
 
         self.background = None
 
@@ -154,6 +157,7 @@ class GameFrameManager:
         self.object_size = round((54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2 * self.osu_pixel_multiplier)
         self.hitcircle = pygame.transform.smoothscale(
             self.original_hitcircle, (self.object_size, self.object_size))
+        self.plain_circle = self.create_plain_circle()
         self.current_offset = self.current_map.hit_objects[0].time.total_seconds()*1000 - \
             self.object_manager.preempt - 3000
         self.background = pygame.image.load(
@@ -162,6 +166,15 @@ class GameFrameManager:
         self.background = pygame.transform.smoothscale(self.background, (
             self.background.get_size()[0] * background_ratio,
             self.background.get_size()[1] * background_ratio))
+
+    def create_plain_circle(self):
+        size = self.object_size
+        circle = np.zeros((size, size, 3), dtype=np.uint8)
+        for y in range(size):
+            for x in range(size):
+                if (x - size / 2)**2 + (y - size / 2)**2 < (size / 2)**2:
+                    circle[y, x] = (255, 255, 255)
+        return circle
 
     @property
     def can_skip(self):
@@ -224,14 +237,32 @@ class GameFrameManager:
                                               hit_object.position.y * self.osu_pixel_multiplier + self.placement_offset[1] - size.height//2))
 
     def draw_slider(self, slider, opacity):
-        # np.zeros((self.playfield_size[1], self.playfield_size[0]), dtype=np.uint8)
         points = list(
             map(lambda point:
                 (round(point.x * self.osu_pixel_multiplier + self.placement_offset[0]),
                  round(point.y * self.osu_pixel_multiplier + self.placement_offset[1])),
                 map(slider.curve, np.linspace(0, 1, round(slider.length*self.osu_pixel_multiplier)))))
+
         for point in points:
-            self.window.set_at(point, (255, 255, 255, opacity))
+            self.window.blit(self.hitcircle, (point[0] - self.object_size//2, point[1] - self.object_size//2))
+
+        # Fail
+        """
+        for i in range(len(points) - 1):
+            direction = pygame.math.Vector2(points[i][0]-points[i+1][0], points[i][1]-points[i+1][1])
+            if direction.length() > 0:
+                direction = direction.normalize()
+            perp1 = direction.rotate(90) * (self.object_size // 2)
+            perp2 = direction.rotate(-90) * (self.object_size // 2)
+
+            p1 = points[i][0] + perp1.x, points[i][1] + perp1.y
+            p2 = points[i+1][0] + perp1.x, points[i+1][1] + perp1.y
+            p3 = points[i][1] + perp2.x, points[i][1] + perp2.y
+            p4 = points[i+1][1] + perp2.x, points[i+1][1] + perp2.y
+
+            pygame.gfxdraw.aapolygon(self.window, (p1, p2, p3, p4), (255, 255, 255, opacity))
+            pygame.gfxdraw.filled_polygon(self.window, (p1, p2, p3, p4), (255, 255, 255, opacity))
+        """
 
     def draw_volume(self):
         pygame.draw.rect(self.window, (255, 255, 255),
