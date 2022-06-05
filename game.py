@@ -128,8 +128,7 @@ class GameFrameManager:
             else (w, w / osu_pixel_window[0] * osu_pixel_window[1])
         self.placement_offset = [
             round((size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
-        self.osu_pixel_multiplier = self.size[0] / \
-            osu_pixel_window[0]
+        self.osu_pixel_multiplier = self.playfield_size[0] / w
         self.object_size = 0
         self.object_manager = ObjectManager()
         self.current_map = None
@@ -326,13 +325,6 @@ class Game:
                 if event.button in self.events['mousedown']:
                     self.events['mousedown'][event.button](event=event)
 
-    def wait_for_audio(self):
-        # offset might be fucked
-        # TO-DO: Figure out if it really is.
-        if self.frame_manager.current_offset > 0 and not self.audio_manager.beatmap_audio_playing:
-            self.audio_manager.load_and_play_audio(
-                f"{path.dirname(self.current_map.path)}/{self.current_map.beatmap.general['AudioFilename']}", is_beatmap_audio=True)
-
     def draw(self):
         self.window.fill((0, 0, 0))
 
@@ -342,8 +334,6 @@ class Game:
         elif self.current_map is not None:
             if self.is_background_enabled:
                 self.frame_manager.draw_background()
-
-            self.wait_for_audio()
 
             self.frame_manager.draw_objects()
             if self.frame_manager.map_ended:
@@ -355,11 +345,18 @@ class Game:
         if self.audio_manager.time_after_last_modified_volume > pygame.time.get_ticks():
             self.frame_manager.draw_volume()
 
+    def handle_audio(self):
+        if not self.on_start_screen and not self.audio_manager.beatmap_audio_playing and self.frame_manager.current_offset >= 0:
+            self.audio_manager.load_and_play_audio(
+                f"{path.dirname(self.current_map.path)}/{self.current_map.beatmap.general['AudioFilename']}",
+                is_beatmap_audio=True)
+
     def run(self):
         self.running = True
 
         while self.running:
             self.handle_events()
+            self.handle_audio()
             self.draw()
 
             pygame.display.update()
