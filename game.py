@@ -295,6 +295,7 @@ class Game:
         if self.on_start_screen:
             return
         self.current_map = None
+        self.audio_manager.stop_audio(0)
         self.on_start_screen = True
 
     # Running functions
