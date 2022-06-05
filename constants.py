@@ -1,1 +1,1 @@
-osu_pixel_window = (640, 512)
+osu_pixel_window = (640, 480)

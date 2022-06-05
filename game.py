@@ -1,6 +1,6 @@
-import threading
 import pygame
-import time
+import numpy as np
+import math
 from typing import Sequence
 from os import path
 from constants import *
@@ -58,8 +58,9 @@ class GameFrameManager:
             else (w, w / osu_pixel_window[0] * osu_pixel_window[1])
         self.placement_offset = [
             round((size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
-        self.osu_pixel_multiplier = self.playfield_size[0] / \
+        self.osu_pixel_multiplier = self.size[0] / \
             osu_pixel_window[0]
+        self.object_size = 0
         self.object_manager = ObjectManager()
         self.current_map = None
         self.current_offset = 0
@@ -77,10 +78,9 @@ class GameFrameManager:
     def load_map(self, beatmap):
         self.current_map = beatmap
         self.object_manager.load_hit_objects(beatmap)
-        size = (
-            54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2 * self.osu_pixel_multiplier
+        self.object_size = round((54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2 * self.osu_pixel_multiplier)
         self.hitcircle = pygame.transform.smoothscale(
-            self.original_hitcircle, (size, size))
+            self.original_hitcircle, (self.object_size, self.object_size))
         self.current_offset = self.current_map.hit_objects[0].time.total_seconds()*1000 - \
             self.object_manager.preempt - 3000
         self.background = pygame.image.load(
@@ -95,8 +95,7 @@ class GameFrameManager:
         return self.current_offset < self.current_map.hit_objects[0].time.total_seconds()*1000-3000
 
     def skip(self):
-        self.current_offset = self.current_map.hit_objects[0].time.total_seconds(
-        )*1000-2500
+        self.current_offset = self.current_map.hit_objects[0].time.total_seconds()*1000-2500
 
     def render_debug(self):
         text_surface = self.font.render(f'Map: {self.current_map.beatmap.metadata["Artist"]} - '
@@ -135,11 +134,25 @@ class GameFrameManager:
     def draw_objects(self):
         self.current_offset += self.clock.get_time()
         for hit_object in self.object_manager.get_hit_objects_for_offset(self.current_offset):
-            self.hitcircle.set_alpha(self.object_manager.get_opacity(
-                hit_object, self.current_offset))
+            # TODO: Make this more practical as opposed to statically comparing to 2
+            opacity = self.object_manager.get_opacity(
+                hit_object, self.current_offset)
+            if hit_object.type_code == 2:  # slider
+                self.draw_slider(hit_object, opacity)
+            self.hitcircle.set_alpha(opacity)
             size = self.hitcircle.get_rect()
-            self.window.blit(self.hitcircle, (hit_object.position.x * self.osu_pixel_multiplier + self.placement_offset[0] - size[0]//2,
-                                              hit_object.position.y * self.osu_pixel_multiplier + self.placement_offset[1] - size[1]//2))
+            self.window.blit(self.hitcircle, (hit_object.position.x * self.osu_pixel_multiplier + self.placement_offset[0] - size.width//2,
+                                              hit_object.position.y * self.osu_pixel_multiplier + self.placement_offset[1] - size.height//2))
+
+    def draw_slider(self, slider, opacity):
+        # np.zeros((self.playfield_size[1], self.playfield_size[0]), dtype=np.uint8)
+        points = list(
+            map(lambda point:
+                (round(point.x * self.osu_pixel_multiplier + self.placement_offset[0]),
+                 round(point.y * self.osu_pixel_multiplier + self.placement_offset[1])),
+                map(slider.curve, np.arange(0, 1, 0.01))))  # TODO: should use np.linspace and the length of the slider and osu pixel multiplier
+        for point in points:
+            self.window.set_at(point, (255, 255, 255, opacity))
 
     @property
     def map_ended(self):
@@ -203,9 +216,8 @@ class Game:
         self.display_debug = not self.display_debug
 
     def on_skip(self, event):
-        if not self.frame_manager.can_skip:
-            return
-        self.frame_manager.skip()
+        if self.frame_manager.can_skip:
+            self.frame_manager.skip()
 
     def on_force_end(self, event):
         if self.on_start_screen:
