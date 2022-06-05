@@ -100,6 +100,7 @@ class AudioManager:
             return
         if channel == 0:
             pygame.mixer.music.stop()
+            self.beatmap_audio_playing = False
         else:
             pygame.mixer.Channel(channel).stop()
 
@@ -314,7 +315,7 @@ class Game:
     def wait_for_audio(self):
         # offset might be fucked
         # TO-DO: Figure out if it really is.
-        if self.frame_manager.current_offset > 0:
+        if self.frame_manager.current_offset > 0 and not self.audio_manager.beatmap_audio_playing:
             self.audio_manager.load_and_play_audio(
                 f"{path.dirname(self.current_map.path)}/{self.current_map.beatmap.general['AudioFilename']}", is_beatmap_audio=True)
 
