@@ -31,7 +31,9 @@ class ObjectManager:
         while True:
             if index == len(self.hit_objects):
                 break
-            if offset > self.hit_objects[index].time.total_seconds()*1000:
+            endtime = self.hit_objects[index].end_time.total_seconds()*1000 if self.hit_objects[index].type_code == 2 \
+                else self.hit_objects[index].time.total_seconds()*1000
+            if offset > endtime:
                 self.obj_offset += 1
                 index += 1
                 continue
@@ -211,9 +213,9 @@ class GameFrameManager:
     def draw_objects(self):
         self.current_offset += self.clock.get_time()
         for hit_object in self.object_manager.get_hit_objects_for_offset(self.current_offset):
-            # TODO: Make this more practical as opposed to statically comparing to 2
             opacity = self.object_manager.get_opacity(
                 hit_object, self.current_offset)
+            # TODO: Make this more practical as opposed to statically comparing to 2
             if hit_object.type_code == 2:  # slider
                 self.draw_slider(hit_object, opacity)
             self.hitcircle.set_alpha(opacity)
@@ -227,7 +229,7 @@ class GameFrameManager:
             map(lambda point:
                 (round(point.x * self.osu_pixel_multiplier + self.placement_offset[0]),
                  round(point.y * self.osu_pixel_multiplier + self.placement_offset[1])),
-                map(slider.curve, np.arange(0, 1, 0.01))))  # TODO: should use np.linspace and the length of the slider and osu pixel multiplier
+                map(slider.curve, np.linspace(0, 1, round(slider.length*self.osu_pixel_multiplier)))))
         for point in points:
             self.window.set_at(point, (255, 255, 255, opacity))
 
