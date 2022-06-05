@@ -128,7 +128,7 @@ class GameFrameManager:
             else (w, w / osu_pixel_window[0] * osu_pixel_window[1])
         self.placement_offset = [
             round((size[i] - self.playfield_size[i]) / 2) for i in (0, 1)]
-        self.osu_pixel_multiplier = self.playfield_size[0] / w
+        self.osu_pixel_multiplier = self.playfield_size[0] / 512
         self.object_size = 0
         self.object_manager = ObjectManager()
         self.current_map = None
@@ -201,6 +201,12 @@ class GameFrameManager:
             max(50, min(self.current_map.hit_objects[0].time.total_seconds()*1000-self.current_offset-500, 255)))
         self.window.blit(
             self.background, (self.size[0]/2-(self.background.get_size()[0]/2), self.size[1]/2-(self.background.get_size()[1]/2)))
+
+    def draw_playfield(self):
+        pygame.draw.rect(self.window, (0, 0, 0),
+                         (self.placement_offset[0], self.placement_offset[1],
+                          self.playfield_size[0], self.playfield_size[1]),
+                         width=5)
 
     def draw_objects(self):
         self.current_offset += self.clock.get_time()
@@ -335,6 +341,7 @@ class Game:
             if self.is_background_enabled:
                 self.frame_manager.draw_background()
 
+            self.frame_manager.draw_playfield()
             self.frame_manager.draw_objects()
             if self.frame_manager.map_ended:
                 self.on_start_screen = True
