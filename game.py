@@ -92,6 +92,7 @@ class AudioManager:
             return
         if channel == 0:
             pygame.mixer.music.play()
+            self.beatmap_audio_playing = True
         else:
             pygame.mixer.Channel(channel).play()
 
