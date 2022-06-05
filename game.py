@@ -1,5 +1,6 @@
 import threading
 import pygame
+from random import randint
 import time
 from typing import Sequence
 from os import path
@@ -45,8 +46,74 @@ class ObjectManager:
             (clear - offset) / self.fadein * 255)
 
 
+class AudioManager:
+    def __init__(self, default_volume=0.25, is_disabled=False, channel_amount=32):
+        pygame.mixer.init()
+
+        self.channel_amount = channel_amount
+
+        # for overlapping sounds, channel 0 is reserved for beatmap music
+        pygame.mixer.set_num_channels(channel_amount)
+
+        self.time_after_last_modified_volume = -750
+        self.is_disabled = is_disabled
+        self.volume = default_volume if not is_disabled else 0
+
+        self.beatmap_audio_playing = False
+
+        pygame.mixer.music.set_volume(self.volume)
+
+    def set_volume(self, new_volume):
+        if self.is_disabled or self.volume == max(0, min(1, new_volume)):
+            return
+        self.volume = max(0, min(1, new_volume))
+        self.time_after_last_modified_volume = pygame.time.get_ticks()+750
+        pygame.mixer.music.set_volume(new_volume)
+
+    def increase_volume(self, channel=0, event=None):
+        self.set_volume(self.volume+0.01)
+
+    def decrease_volume(self, channel=0, event=None):
+        self.set_volume(self.volume-0.01)
+
+    def load_audio(self, pathto, is_beatmap_audio=False, channel=0):
+        if self.is_disabled:
+            return
+        if is_beatmap_audio:
+            pygame.mixer.music.load(pathto)
+        else:
+            channel = randint(
+                1, self.channel_amount) if channel == 0 else channel
+            pygame.mixer.Channel(1).load(pathto)
+        return channel if not is_beatmap_audio else 0
+
+    def play_audio(self, channel=0):
+        if self.is_disabled:
+            return
+        if channel == 0:
+            pygame.mixer.music.play()
+        else:
+            pygame.mixer.Channel(channel).play()
+
+    def stop_audio(self, channel=0):
+        if self.is_disabled:
+            return
+        if channel == 0:
+            pygame.mixer.music.stop()
+        else:
+            pygame.mixer.Channel(channel).stop()
+
+    def load_and_play_audio(self, pathto, is_beatmap_audio=False):
+        if self.is_disabled or (is_beatmap_audio and self.beatmap_audio_playing):
+            return
+        if is_beatmap_audio:
+            self.beatmap_audio_playing = True
+        channel = self.load_audio(pathto, is_beatmap_audio=is_beatmap_audio)
+        self.play_audio(channel=channel)
+
+
 class GameFrameManager:
-    def __init__(self, size, window, clock):
+    def __init__(self, size, window, clock, audio_manager):
         self.size = size
         self.window = window
         self.clock = clock
@@ -63,6 +130,8 @@ class GameFrameManager:
         self.object_manager = ObjectManager()
         self.current_map = None
         self.current_offset = 0
+
+        self.audio_manager = audio_manager
 
         pekora = pygame.image.load(r'resources\\pekora.png')
         self.pekora = pygame.transform.smoothscale(pekora, (128, 128))
@@ -141,13 +210,19 @@ class GameFrameManager:
             self.window.blit(self.hitcircle, (hit_object.position.x * self.osu_pixel_multiplier + self.placement_offset[0] - size[0]//2,
                                               hit_object.position.y * self.osu_pixel_multiplier + self.placement_offset[1] - size[1]//2))
 
+    def draw_volume(self):
+        pygame.draw.rect(self.window, (255, 255, 255),
+                         (self.size[0]-164, self.size[1]-64-25, 100, 16), 1)
+        pygame.draw.rect(self.window, (255, 255, 255),
+                         (self.size[0]-164, self.size[1]-64-25, self.audio_manager.volume*100, 16), 0)
+
     @property
     def map_ended(self):
         return self.current_offset > self.current_map.hit_objects[-1].time.total_seconds()*1000
 
 
 class Game:
-    def __init__(self, size: Sequence[int], fps: int, gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True, is_background_enabled=True, should_reset_cache=False):
+    def __init__(self, size: Sequence[int], fps: int, gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True, is_background_enabled=True, should_reset_cache=False, is_audio_enabled=True, default_volume=25):
         # Should be performed before initializing pygame
         self.map_collector = MapCollector(
             is_caching_enabled=is_caching_enabled, should_reset_cache=should_reset_cache)
@@ -171,18 +246,27 @@ class Game:
         self.window = pygame.display.set_mode(
             size, pygame.NOFRAME if is_borderless else 0)
         self.clock = pygame.time.Clock()
-        self.frame_manager = GameFrameManager(size, self.window, self.clock)
+        self.audio_manager = AudioManager(
+            default_volume=default_volume/100, is_disabled=not is_audio_enabled)
+        self.frame_manager = GameFrameManager(
+            size, self.window, self.clock, self.audio_manager)
 
         # State variables
         self.running = False
         self.on_start_screen = True
         self.display_debug = True
 
-        self.actions = {
-            pygame.K_r: self.on_random_map,
-            pygame.K_d: self.on_toggle_debug,
-            pygame.K_SPACE: self.on_skip,
-            pygame.K_f: self.on_force_end,
+        self.events = {
+            "keydown": {
+                pygame.K_r: self.on_random_map,
+                pygame.K_d: self.on_toggle_debug,
+                pygame.K_SPACE: self.on_skip,
+                pygame.K_f: self.on_force_end,
+            },
+            "mousedown": {
+                4: self.audio_manager.increase_volume,
+                5: self.audio_manager.decrease_volume,
+            }
         }
 
     # Event functions
@@ -220,8 +304,18 @@ class Game:
             if event.type == pygame.QUIT:
                 self.on_quit()
             if event.type == pygame.KEYDOWN:
-                if event.key in self.actions:
-                    self.actions[event.key](event)
+                if event.key in self.events['keydown']:
+                    self.events['keydown'][event.key](event=event)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button in self.events['mousedown']:
+                    self.events['mousedown'][event.button](event=event)
+
+    def wait_for_audio(self):
+        # offset might be fucked
+        # TO-DO: Figure out if it really is.
+        if self.frame_manager.current_offset > 0:
+            self.audio_manager.load_and_play_audio(
+                f"{path.dirname(self.current_map.path)}/{self.current_map.beatmap.general['AudioFilename']}", is_beatmap_audio=True)
 
     def draw(self):
         self.window.fill((0, 0, 0))
@@ -233,12 +327,17 @@ class Game:
             if self.is_background_enabled:
                 self.frame_manager.draw_background()
 
+            self.wait_for_audio()
+
             self.frame_manager.draw_objects()
             if self.frame_manager.map_ended:
                 self.on_start_screen = True
 
         if self.display_debug:
             self.frame_manager.render_debug()
+
+        if self.audio_manager.time_after_last_modified_volume > pygame.time.get_ticks():
+            self.frame_manager.draw_volume()
 
     def run(self):
         self.running = True
