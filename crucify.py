@@ -10,6 +10,7 @@ parser.add_argument('--width', '-sw', type=int, default=640)
 parser.add_argument('--height', '-sh', type=int, default=480)
 parser.add_argument("--fps", '-f', type=int, default=960)
 parser.add_argument('--volume', '-v', type=int, default=25)
+parser.add_argument('--debug-mode', '-d', type=int, default=0)
 parser.add_argument('--borderless', '-b', action='store_true')
 parser.add_argument('--no-cache', '-nc', action='store_false')
 parser.add_argument('--reset-cache', '-rc', action='store_true')
@@ -31,6 +32,7 @@ game = Game([args.width, args.height], args.fps, gamemode,
             should_reset_cache=args.reset_cache,
             is_background_enabled=args.no_background,
             is_audio_enabled=args.no_audio,
-            default_volume=args.volume
+            default_volume=args.volume,
+            debug_mode=args.debug_mode
             )
 game.run()

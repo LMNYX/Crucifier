@@ -8,7 +8,7 @@ from random import randint
 from typing import Sequence
 from os import path
 from constants import *
-from enums import Gamemode
+from enums import Gamemode, DebugMode
 from beatmap import MapCollector
 
 
@@ -120,10 +120,11 @@ class AudioManager:
 
 
 class GameFrameManager:
-    def __init__(self, size, window, clock, audio_manager):
+    def __init__(self, size, window, clock, audio_manager, debug_mode=DebugMode.NO):
         self.size = size
         self.window = window
         self.clock = clock
+        self.debug_mode = debug_mode
         self.font = pygame.font.SysFont("Times New Roman", 16)
         w = size[0] * 0.8
         h = size[1] * 0.8
@@ -189,6 +190,10 @@ class GameFrameManager:
         self.current_offset = self.current_map.hit_objects[0].time.total_seconds(
         )*1000-2500
 
+    def debug_blit(self, *args, n=0):
+        self.window.blit(*args)
+        return n + 19
+
     def render_debug(self):
         text_surface = self.font.render(f'Map: {self.current_map.beatmap.metadata["Artist"]} - '
                                         f'{self.current_map.beatmap.metadata["Title"]} '
@@ -199,16 +204,22 @@ class GameFrameManager:
                                         f'CS: {self.current_map.beatmap.difficulty["CircleSize"]}'
                                         if self.current_map is not None else "No map loaded.", False,
                                         (255, 255, 255))
+        debug_y_offset = 0
         offset_render = self.font.render(
             f'Offset: {self.current_offset}', False, (255, 255, 255))
-        # tick_render = self.font.render(
-        #             f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
+        tick_render = self.font.render(
+            f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
         fps_render = self.font.render(
             f'FPS: {round(self.clock.get_fps())}', False, (255, 255, 255))
-        self.window.blit(text_surface, (0, 0))
-        self.window.blit(offset_render, (0, 21))
-        # self.window.blit(tick_render, (0, 42))
-        self.window.blit(fps_render, (0, 42))
+        debug_y_offset = self.debug_blit(
+            text_surface, (0, debug_y_offset), n=debug_y_offset)
+        if self.debug_mode is DebugMode.FULL:
+            debug_y_offset = self.debug_blit(
+                offset_render, (0, debug_y_offset), n=debug_y_offset)
+            debug_y_offset = self.debug_blit(
+                tick_render, (0, debug_y_offset), n=debug_y_offset)
+        debug_y_offset = self.debug_blit(
+            fps_render, (0, debug_y_offset), n=debug_y_offset)
 
     def draw_pekora(self):
         rotated_image = pygame.transform.rotate(self.pekora, self.pekora_angle)
@@ -294,7 +305,7 @@ class GameFrameManager:
 
 
 class Game:
-    def __init__(self, size: Sequence[int], fps: int, gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True, is_background_enabled=True, should_reset_cache=False, is_audio_enabled=True, default_volume=25):
+    def __init__(self, size: Sequence[int], fps: int, gamemode: Gamemode, is_borderless: bool = False, is_caching_enabled=True, is_background_enabled=True, should_reset_cache=False, is_audio_enabled=True, default_volume=25, debug_mode=0):
         # Should be performed before initializing pygame
         self.map_collector = MapCollector(
             is_caching_enabled=is_caching_enabled, should_reset_cache=should_reset_cache)
@@ -307,6 +318,7 @@ class Game:
         self.current_map = None
         self.fps = fps
         self.is_background_enabled = is_background_enabled
+        self.debug_mode = DebugMode(debug_mode)
 
         # Initialize pygame
         pygame.init()
@@ -321,7 +333,7 @@ class Game:
         self.audio_manager = AudioManager(
             default_volume=default_volume/100, is_disabled=not is_audio_enabled)
         self.frame_manager = GameFrameManager(
-            size, self.window, self.clock, self.audio_manager)
+            size, self.window, self.clock, self.audio_manager, debug_mode=self.debug_mode)
 
         # State variables
         self.running = False
@@ -396,7 +408,7 @@ class Game:
             if self.frame_manager.map_ended:
                 self.on_start_screen = True
 
-        if self.display_debug:
+        if self.display_debug and self.debug_mode is not DebugMode.NO:
             self.frame_manager.render_debug()
             if self.current_map is not None:
                 self.frame_manager.draw_playfield()
