@@ -3,7 +3,6 @@ import pygame.gfxdraw  # Must be imported explicitly to work
 import numpy as np
 import math
 import time
-from profilehooks import profile
 from random import randint
 from typing import Sequence
 from os import path
@@ -422,7 +421,6 @@ class Game:
                 f"{path.dirname(self.current_map.path)}/{self.current_map.beatmap.general['AudioFilename']}",
                 is_beatmap_audio=True)
 
-    @profile
     def run(self):
         self.running = True
 
