@@ -154,7 +154,8 @@ class GameFrameManager:
     def load_map(self, beatmap):
         self.current_map = beatmap
         self.object_manager.load_hit_objects(beatmap)
-        self.object_size = round((54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2 * self.osu_pixel_multiplier)
+        self.object_size = round(
+            (54.4 - 4.48 * float(self.current_map.beatmap.difficulty["CircleSize"])) * 2 * self.osu_pixel_multiplier)
         self.hitcircle = pygame.transform.smoothscale(
             self.original_hitcircle, (self.object_size, self.object_size))
         self.plain_circle = self.create_plain_circle()
@@ -182,7 +183,8 @@ class GameFrameManager:
         return self.current_offset < self.current_map.hit_objects[0].time.total_seconds()*1000-3000
 
     def skip(self):
-        self.current_offset = self.current_map.hit_objects[0].time.total_seconds()*1000-2500
+        self.current_offset = self.current_map.hit_objects[0].time.total_seconds(
+        )*1000-2500
 
     def render_debug(self):
         text_surface = self.font.render(f'Map: {self.current_map.beatmap.metadata["Artist"]} - '
@@ -198,9 +200,12 @@ class GameFrameManager:
             f'Offset: {self.current_offset}', False, (255, 255, 255))
         tick_render = self.font.render(
             f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
+        fps_render = self.font.render(
+            f'FPS: {round(self.clock.get_fps())}', False, (255, 255, 255))
         self.window.blit(text_surface, (0, 0))
         self.window.blit(offset_render, (0, 21))
         self.window.blit(tick_render, (0, 42))
+        self.window.blit(fps_render, (0, 63))
 
     def draw_pekora(self):
         rotated_image = pygame.transform.rotate(self.pekora, self.pekora_angle)
@@ -247,7 +252,8 @@ class GameFrameManager:
         self.plain_circle.set_alpha(opacity)
 
         for point in points:
-            self.window.blit(self.plain_circle, (point[0] - self.object_size//2, point[1] - self.object_size//2))
+            self.window.blit(
+                self.plain_circle, (point[0] - self.object_size//2, point[1] - self.object_size//2))
 
         # Fail
         """
