@@ -243,8 +243,10 @@ class GameFrameManager:
                  round(point.y * self.osu_pixel_multiplier + self.placement_offset[1])),
                 map(slider.curve, np.linspace(0, 1, round(slider.length*self.osu_pixel_multiplier)))))
 
+        self.plain_circle.set_alpha(opacity)
+
         for point in points:
-            self.window.blit(self.hitcircle, (point[0] - self.object_size//2, point[1] - self.object_size//2))
+            self.window.blit(self.plain_circle, (point[0] - self.object_size//2, point[1] - self.object_size//2))
 
         # Fail
         """
