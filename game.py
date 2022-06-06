@@ -158,6 +158,7 @@ class GameFrameManager:
         self.hitcircle = pygame.transform.smoothscale(
             self.original_hitcircle, (self.object_size, self.object_size))
         self.plain_circle = self.create_plain_circle()
+        self.plain_circle.set_colorkey((0, 0, 0))
         self.current_offset = self.current_map.hit_objects[0].time.total_seconds()*1000 - \
             self.object_manager.preempt - 3000
         self.background = pygame.image.load(
@@ -174,7 +175,7 @@ class GameFrameManager:
             for x in range(size):
                 if (x - size / 2)**2 + (y - size / 2)**2 < (size / 2)**2:
                     circle[y, x] = (255, 255, 255)
-        return circle
+        return pygame.surfarray.make_surface(circle)
 
     @property
     def can_skip(self):
