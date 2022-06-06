@@ -204,15 +204,18 @@ class GameFrameManager:
                                         if self.current_map is not None else "No map loaded.", False,
                                         (255, 255, 255))
         debug_y_offset = 0
-        offset_render = self.font.render(
-            f'Offset: {self.current_offset}', False, (255, 255, 255))
-        tick_render = self.font.render(
-            f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
         fps_render = self.font.render(
             f'FPS: {round(self.clock.get_fps())}', False, (255, 255, 255))
         debug_y_offset = self.debug_blit(
             text_surface, (0, debug_y_offset), n=debug_y_offset)
         if self.debug_mode is DebugMode.FULL:
+            # Render
+            offset_render = self.font.render(
+                f'Offset: {self.current_offset}', False, (255, 255, 255))
+            tick_render = self.font.render(
+                f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
+
+            # Blit
             debug_y_offset = self.debug_blit(
                 offset_render, (0, debug_y_offset), n=debug_y_offset)
             debug_y_offset = self.debug_blit(
