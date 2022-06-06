@@ -3,6 +3,7 @@ import pygame.gfxdraw  # Must be imported explicitly to work
 import numpy as np
 import math
 import time
+from profilehooks import profile
 from random import randint
 from typing import Sequence
 from os import path
@@ -226,15 +227,16 @@ class GameFrameManager:
             self.background, (self.size[0]/2-(self.background.get_size()[0]/2), self.size[1]/2-(self.background.get_size()[1]/2)))
 
     def fade_background(self):
-        opacity = round(max(50, (self.current_map.hit_objects[0].time.total_seconds()*1000 - self.current_offset) / 500 * 255))
+        opacity = round(max(50, (self.current_map.hit_objects[0].time.total_seconds(
+        )*1000 - self.current_offset) / 500 * 255))
         self.background.set_alpha(opacity)
         return opacity == 50
 
     def draw_playfield(self):
-        pygame.draw.rect(self.window, (0, 0, 0),
+        pygame.draw.rect(self.window, (255, 0, 0),
                          (self.placement_offset[0], self.placement_offset[1],
                           self.playfield_size[0], self.playfield_size[1]),
-                         width=5)
+                         width=1)
 
     def draw_objects(self):
         self.current_offset += self.clock.get_time()
@@ -390,13 +392,14 @@ class Game:
             if self.is_background_enabled:
                 self.frame_manager.draw_background()
 
-            self.frame_manager.draw_playfield()
             self.frame_manager.draw_objects()
             if self.frame_manager.map_ended:
                 self.on_start_screen = True
 
         if self.display_debug:
             self.frame_manager.render_debug()
+            if self.current_map is not None:
+                self.frame_manager.draw_playfield()
 
         if self.audio_manager.time_after_last_modified_volume > pygame.time.get_ticks():
             self.frame_manager.draw_volume()
@@ -407,6 +410,7 @@ class Game:
                 f"{path.dirname(self.current_map.path)}/{self.current_map.beatmap.general['AudioFilename']}",
                 is_beatmap_audio=True)
 
+    @profile
     def run(self):
         self.running = True
 
