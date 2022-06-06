@@ -20,7 +20,7 @@ args = parser.parse_args()
 #
 
 gamemode = Gamemode(
-    args.gamemode[0]) if args.gamemode is not None else Gamemode(0)
+    args.gamemode[0]) if args.gamemode is not None else Gamemode.STD
 
 print("Gamemode set to:", gamemode)
 
