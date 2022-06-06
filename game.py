@@ -150,6 +150,7 @@ class GameFrameManager:
         self.plain_circle = None
 
         self.background = None
+        self.background_fading = False
 
     def load_map(self, beatmap):
         self.current_map = beatmap
@@ -168,6 +169,7 @@ class GameFrameManager:
         self.background = pygame.transform.smoothscale(self.background, (
             self.background.get_size()[0] * background_ratio,
             self.background.get_size()[1] * background_ratio))
+        self.background_fading = True
 
     def create_plain_circle(self):
         size = self.object_size
@@ -198,14 +200,14 @@ class GameFrameManager:
                                         (255, 255, 255))
         offset_render = self.font.render(
             f'Offset: {self.current_offset}', False, (255, 255, 255))
-        tick_render = self.font.render(
-            f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
+        # tick_render = self.font.render(
+        #             f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
         fps_render = self.font.render(
             f'FPS: {round(self.clock.get_fps())}', False, (255, 255, 255))
         self.window.blit(text_surface, (0, 0))
         self.window.blit(offset_render, (0, 21))
-        self.window.blit(tick_render, (0, 42))
-        self.window.blit(fps_render, (0, 63))
+        # self.window.blit(tick_render, (0, 42))
+        self.window.blit(fps_render, (0, 42))
 
     def draw_pekora(self):
         rotated_image = pygame.transform.rotate(self.pekora, self.pekora_angle)
@@ -218,10 +220,15 @@ class GameFrameManager:
     def draw_background(self):
         if self.background is None:
             return
-        self.background.set_alpha(
-            max(50, min(self.current_map.hit_objects[0].time.total_seconds()*1000-self.current_offset-500, 255)))
+        if self.background_fading and self.fade_background():
+            self.background_fading = False
         self.window.blit(
             self.background, (self.size[0]/2-(self.background.get_size()[0]/2), self.size[1]/2-(self.background.get_size()[1]/2)))
+
+    def fade_background(self):
+        opacity = round(max(50, (self.current_map.hit_objects[0].time.total_seconds()*1000 - self.current_offset) / 500 * 255))
+        self.background.set_alpha(opacity)
+        return opacity == 50
 
     def draw_playfield(self):
         pygame.draw.rect(self.window, (0, 0, 0),
