@@ -10,6 +10,12 @@ import gc
 import numpy as np
 import traceback
 
+# Overwriting HitObject object to add a new comparison functions.
+beatmap.HitObject.IsCircle = lambda self: self.type_code == 1
+beatmap.HitObject.IsSlider = lambda self: self.type_code == 2
+beatmap.HitObject.IsSpinner = lambda self: self.type_code == 8
+beatmap.HitObject.IsHoldNote = lambda self: self.type_code == 128
+
 
 class HitObject:
     def __init__(self, x, y, offset, objtype, hitsound=0, object_params="", hit_sample=""):
