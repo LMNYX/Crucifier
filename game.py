@@ -257,7 +257,7 @@ class GameFrameManager:
             opacity = self.object_manager.get_opacity(
                 hit_object, self.current_offset)
             # TODO: Make this more practical as opposed to statically comparing to 2
-            if hit_object.IsSlider():  # slider
+            if hit_object.is_slider():  # slider
                 self.draw_slider(hit_object, opacity)
             self.hitcircle.set_alpha(opacity)
             size = self.hitcircle.get_rect()
