@@ -8,8 +8,12 @@
 # python3 crucify.py [...arguments]
 ```
 
-## To-Do List
+## Roadmap
 
-- [ ] Figure out AR disappearing time.
-- [ ] Figure out slider rendering (MATH, HELL NAW)
-- [ ] Figure out osupixel & screen scaling
+- [x] Figure out osupixel & screen scaling
+- [x] Figure out slider rendering (MATH, HELL NAW)
+- [ ] Add spinners
+- [ ] Add cursor
+- [ ] Implement machine learning algo
+- [ ] Figure out AR disappearing time
+- [ ] Fix sliders (optimize)
