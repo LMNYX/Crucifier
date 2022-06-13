@@ -257,12 +257,16 @@ class GameFrameManager:
             opacity = self.object_manager.get_opacity(
                 hit_object, self.current_offset)
             # TODO: Make this more practical as opposed to statically comparing to 2
-            if hit_object.is_slider():  # slider
+            if hit_object.is_slider():  # slider ( NO WAY!!! )
                 self.draw_slider(hit_object, opacity)
             self.hitcircle.set_alpha(opacity)
             size = self.hitcircle.get_rect()
             self.window.blit(self.hitcircle, (hit_object.position.x * self.osu_pixel_multiplier + self.placement_offset[0] - size.width//2,
                                               hit_object.position.y * self.osu_pixel_multiplier + self.placement_offset[1] - size.height//2))
+
+    def draw_cursor(self, position):
+        pygame.draw.circle(self.window, (255, 0, 0),
+                           (position[0] + self.placement_offset[0], position[1] + self.placement_offset[1]), 4)
 
     def draw_slider(self, slider, opacity):
         points = list(
@@ -337,6 +341,11 @@ class Game:
         self.frame_manager = GameFrameManager(
             size, self.window, self.clock, self.audio_manager, debug_mode=self.debug_mode)
 
+        print(self.frame_manager.playfield_size[1]
+              + self.frame_manager.placement_offset[1])
+        self.cursor_position = (
+            self.frame_manager.playfield_size[0]/2, self.frame_manager.playfield_size[1]/2)
+
         # State variables
         self.running = False
         self.on_start_screen = True
@@ -406,6 +415,10 @@ class Game:
             if self.is_background_enabled:
                 self.frame_manager.draw_background()
 
+            self.cursor_position = (pygame.mouse.get_pos(
+            )[0] - self.frame_manager.placement_offset[0], pygame.mouse.get_pos()[1] - self.frame_manager.placement_offset[1])
+
+            self.frame_manager.draw_cursor(self.cursor_position)
             self.frame_manager.draw_objects()
             if self.frame_manager.map_ended:
                 self.on_start_screen = True
