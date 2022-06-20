@@ -85,7 +85,7 @@ class MapCollector:
 
         for mapset in glob(self.path, recursive=True):
             if mapset.split("\\")[1] != "Failed" and not (hashlib.md5(mapset.encode()).hexdigest() in self._cached_paths):
-                self._maps.append(Mapset(mapset))
+                np.append(self._maps, Mapset(mapset))
         self._maps = [x for x in self._maps if x is not None]
 
         del self._cached_paths
@@ -100,13 +100,7 @@ class MapCollector:
         return random.choice(self._maps)
 
     def get_random_map(self) -> Map:
-        try:
-            return self.get_random_mapset().get_random_difficulty()
-        except Exception as err:
-            try:
-                raise err
-            except IndexError:
-                print("No maps found.")
+        return self.get_random_mapset().get_random_difficulty()
 
     def load_cache(self):
         try:

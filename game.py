@@ -382,8 +382,22 @@ class Game:
     def on_random_map(self, event):
         if not self.on_start_screen:
             return
-        self.current_map = self.map_collector.get_random_map()
+        try:
+            self.current_map = self.map_collector.get_random_map()
+        except Exception as e:
+            try:
+                raise e
+            except IndexError:
+                self.frame_manager.set_status_message(
+                    "No maps found. Load maps first.")
+                return
+
+            self.frame_manager.set_status_message(
+                f"{e}")
+            return
         if self.current_map is None:
+            self.frame_manager.set_status_message(
+                "Failed to load a map. Try again.")
             return
         self.on_start_screen = False
         self.frame_manager.load_map(self.current_map)
