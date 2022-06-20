@@ -124,7 +124,9 @@ class GameFrameManager:
         self.window = window
         self.clock = clock
         self.debug_mode = debug_mode
-        self.font = pygame.font.SysFont("Times New Roman", 16)
+        self.status_message = None
+        self.font = pygame.font.Font("resources/Torus.otf", 16)
+        self.pekora_font = pygame.font.Font("resources/Torus.otf", 24)
         w = size[0] * 0.8
         h = size[1] * 0.8
         self.playfield_size = (h / osu_pixel_window[1] * osu_pixel_window[0], h) \
@@ -153,6 +155,9 @@ class GameFrameManager:
         self.background = None
         self.background_fading = False
 
+    def set_status_message(self, message):
+        self.status_message = message
+
     def load_map(self, beatmap):
         self.current_map = beatmap
         self.object_manager.load_hit_objects(beatmap)
@@ -161,7 +166,6 @@ class GameFrameManager:
         self.hitcircle = pygame.transform.smoothscale(
             self.original_hitcircle, (self.object_size, self.object_size))
         self.plain_circle = self.create_plain_circle()
-        self.plain_circle.set_colorkey((0, 0, 0))
         self.current_offset = self.current_map.hit_objects[0].time.total_seconds()*1000 - \
             self.object_manager.preempt - 3000
         self.background = pygame.image.load(
@@ -201,19 +205,19 @@ class GameFrameManager:
                                         f'{round(self.current_map.nm_sr, 2)}*, '
                                         f'AR: {self.current_map.beatmap.difficulty["ApproachRate"]}, '
                                         f'CS: {self.current_map.beatmap.difficulty["CircleSize"]}'
-                                        if self.current_map is not None else "No map loaded.", False,
+                                        if self.current_map is not None else "No map loaded.", True,
                                         (255, 255, 255))
         debug_y_offset = 0
         fps_render = self.font.render(
-            f'FPS: {round(self.clock.get_fps())}', False, (255, 255, 255))
+            f'FPS: {round(self.clock.get_fps())}', True, (255, 255, 255))
         debug_y_offset = self.debug_blit(
             text_surface, (0, debug_y_offset), n=debug_y_offset)
         if self.debug_mode is DebugMode.FULL:
             # Render
             offset_render = self.font.render(
-                f'Offset: {self.current_offset}', False, (255, 255, 255))
+                f'Offset: {self.current_offset}', True, (255, 255, 255))
             tick_render = self.font.render(
-                f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', False, (255, 255, 255))
+                f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', True, (255, 255, 255))
 
             # Blit
             debug_y_offset = self.debug_blit(
@@ -225,6 +229,11 @@ class GameFrameManager:
 
     def draw_pekora(self):
         rotated_image = pygame.transform.rotate(self.pekora, self.pekora_angle)
+        if self.status_message:
+            pekora_status = self.pekora_font.render(
+                self.status_message, True, (255, 255, 255))
+            self.window.blit(
+                pekora_status, (self.size[0]/2 - pekora_status.get_size()[0]/2, self.size[1]/2 - pekora_status.get_size()[1]/2 + self.size[1] * 0.2))
         self.window.blit(rotated_image,
                          rotated_image.get_rect(
                              center=self.pekora.get_rect(
@@ -341,8 +350,9 @@ class Game:
         self.frame_manager = GameFrameManager(
             size, self.window, self.clock, self.audio_manager, debug_mode=self.debug_mode)
 
-        print(self.frame_manager.playfield_size[1]
-              + self.frame_manager.placement_offset[1])
+        self.frame_manager.set_status_message(
+            "Press R to select a random map.")
+
         self.cursor_position = (
             self.frame_manager.playfield_size[0]/2, self.frame_manager.playfield_size[1]/2)
 
@@ -414,9 +424,6 @@ class Game:
         elif self.current_map is not None:
             if self.is_background_enabled:
                 self.frame_manager.draw_background()
-
-            self.cursor_position = (pygame.mouse.get_pos(
-            )[0] - self.frame_manager.placement_offset[0], pygame.mouse.get_pos()[1] - self.frame_manager.placement_offset[1])
 
             self.frame_manager.draw_cursor(self.cursor_position)
             self.frame_manager.draw_objects()
