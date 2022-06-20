@@ -83,6 +83,8 @@ class MapCollector:
         if os.path.isfile('maps.cache') and self.is_caching_enabled and not self.should_reset_cache:
             self.load_cache()
 
+        # TO-DO: ITS FUCKING BROKEN!!! FIX IT ASAP IT DOESNT WORK AT ALL FIRST IT CRASHED NOW IT DOESNT LOAD ANYTHING IDK WHAT HAPPENED
+
         for mapset in glob(self.path, recursive=True):
             if mapset.split("\\")[1] != "Failed" and not (hashlib.md5(mapset.encode()).hexdigest() in self._cached_paths):
                 np.append(self._maps, Mapset(mapset))
