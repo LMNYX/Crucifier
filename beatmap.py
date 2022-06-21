@@ -80,20 +80,8 @@ class MapCollector:
         self.should_reset_cache = should_reset_cache
 
     def collect(self) -> None:
-        if os.path.isfile('maps.cache') and self.is_caching_enabled and not self.should_reset_cache:
-            self.load_cache()
-
-        # TO-DO: ITS FUCKING BROKEN!!! FIX IT ASAP IT DOESNT WORK AT ALL FIRST IT CRASHED NOW IT DOESNT LOAD ANYTHING IDK WHAT HAPPENED
-
-        for mapset in glob(self.path, recursive=True):
-            if mapset.split("\\")[1] != "Failed" and not (hashlib.md5(mapset.encode()).hexdigest() in self._cached_paths):
-                np.append(self._maps, Mapset(mapset))
-        self._maps = [x for x in self._maps if x is not None]
-
-        del self._cached_paths
-        gc.collect()
-        if self.is_caching_enabled:
-            self.save_cache()
+        # fuck cache
+        return "FUCK YOU."
 
     def get_mapset(self, index: int) -> Mapset:
         return self._maps[index] if len(self._maps) > index else None
