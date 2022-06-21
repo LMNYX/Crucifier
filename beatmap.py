@@ -1,3 +1,4 @@
+from enums import Gamemode
 from map_parser.map_parser import MapParser
 from osu_sr_calculator import calculateStarRating
 from glob import glob
@@ -5,7 +6,7 @@ from cache import Cache
 import os
 import random
 import hashlib
-from slider import beatmap
+from slider import beatmap, GameMode
 import gc
 import numpy as np
 import traceback
@@ -32,7 +33,14 @@ class Map:
     def __init__(self, path: str):
         self.path = path
         self.beatmap = MapParser(self.path)
-        self.background = dict(self.beatmap.events)['0'][1].replace('"', '')
+        with open(self.path, 'r', encoding='utf-8') as osu_file:
+            self._beatmap = beatmap.Beatmap.from_file(
+                osu_file)
+        try:
+            self.background = dict(self.beatmap.events)[
+                '0'][1].replace('"', '')
+        except KeyError:
+            self.background = ""
         try:
             self.sr_list = calculateStarRating(
                 filepath=self.path, allCombinations=True)
@@ -43,9 +51,7 @@ class Map:
                   f"    {e}")
             self.sr_list = {}
             self.nm_sr = 0
-        with open(self.path, 'r', encoding='utf-8') as osu_file:
-            self.hit_objects = beatmap.Beatmap.from_file(
-                osu_file).hit_objects()
+        self.hit_objects = self._beatmap.hit_objects()
 
 
 class Mapset:
@@ -58,7 +64,10 @@ class Mapset:
         maps = []
         for map_path in glob(self.path + '/*.osu'):
             try:
-                maps.append(Map(map_path))
+                _map = Map(map_path)
+                print(_map._beatmap.mode)
+                if _map._beatmap.mode not in [GameMode.mania, GameMode.taiko, GameMode.ctb]:
+                    maps.append(_map)
             except Exception as e:
                 print(f"Caught exception while importing a map: {traceback.format_exc()}. "
                       f"Skipping it...\n Problematic map: {map_path}")
@@ -80,8 +89,18 @@ class MapCollector:
         self.should_reset_cache = should_reset_cache
 
     def collect(self) -> None:
-        # fuck cache
-        return "FUCK YOU."
+        if os.path.isfile('maps.cache') and self.is_caching_enabled and not self.should_reset_cache:
+            self.load_cache()
+
+        for mapset in glob(self.path, recursive=True):
+            if mapset.split("\\")[1] != "Failed" and not (hashlib.md5(mapset.encode()).hexdigest() in self._cached_paths):
+                self._maps = np.append(self._maps, Mapset(mapset))
+        self._maps = [x for x in self._maps if x is not None]
+
+        del self._cached_paths
+        gc.collect()
+        if self.is_caching_enabled:
+            self.save_cache()
 
     def get_mapset(self, index: int) -> Mapset:
         return self._maps[index] if len(self._maps) > index else None

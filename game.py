@@ -19,6 +19,7 @@ class ObjectManager:
         self.fadein = 0
 
     def load_hit_objects(self, beatmap):
+        print(beatmap._beatmap.mode)
         ar = float(beatmap.beatmap.difficulty["ApproachRate"])
         self.preempt = 1200 + 600 * \
             (5 - ar) / 5 if ar < 5 else 1200 - 750 * (ar - 5) / 5
