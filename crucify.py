@@ -1,6 +1,9 @@
 from game import Game
-from enums import Gamemode
+from beatmap_reader import GameMode
+from dotenv import load_dotenv
 import argparse
+
+load_dotenv()
 
 #
 parser = argparse.ArgumentParser(description='osu!simulation')
@@ -19,8 +22,8 @@ parser.add_argument('--no-audio', '-na', action='store_false')
 args = parser.parse_args()
 #
 
-gamemode = Gamemode(
-    args.gamemode[0]) if args.gamemode is not None else Gamemode.STD
+gamemode = GameMode(
+    args.gamemode[0]) if args.gamemode is not None else GameMode.STANDARD
 
 print("Gamemode set to:", gamemode)
 
