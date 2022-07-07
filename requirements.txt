@@ -2,4 +2,5 @@ numpy==1.22.4
 pygame==2.1.2
 argparse==1.4.0
 osu-sr-calculator==1.1.0
-slider==0.6.0
+git+https://github.com/sheepposu/beatmap_reader@94400c7cfd403c1404e4ee0cae52db1943e9b9d7#egg=beatmap_reader
+python-dotenv
