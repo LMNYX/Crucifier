@@ -1,4 +1,5 @@
-from pickle import dump, load as pickle
+import pickle
+from os.path import exists
 
 
 class ConfigurationManager:
@@ -15,7 +16,7 @@ class ConfigurationManager:
         self.file = file
         self.configuration = {
             "__version": ConfigurationManager.version,
-            "osu_path": None,
+            "songs_path": None,
             "audio": {
                 "volume": 0.05
             },
@@ -38,6 +39,9 @@ class ConfigurationManager:
         return self
 
     def load(self):
+        if (not exists(self.file)):
+            self.save()
+            return self
         with open(self.file, "rb") as f:
             self.configuration = pickle.load(f)
         return self

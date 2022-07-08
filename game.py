@@ -2,11 +2,16 @@ import pygame
 import numpy as np
 import random
 from beatmap_reader import SongsFolder, HitObjectType, GameMode
+from tkinter import filedialog
+import tkinter as tk
 from typing import Sequence
 from os import path, getenv
+from configuration import ConfigurationManager
 from constants import *
 from enums import DebugMode
 
+root = tk.Tk()
+root.withdraw()
 
 # TODO: consider moving logic for calculating resolution and such to its own class
 
@@ -29,9 +34,11 @@ class ObjectManager:
 
         for i, hit_object in enumerate(self.hit_objects):
             progress = round((i / len(self.hit_objects))*20)
-            print(f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
+            print(
+                f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
             if hit_object.type == HitObjectType.SLIDER:
-                hit_object.render(screen_size, placement_offset, osu_pixel_multiplier)
+                hit_object.render(
+                    screen_size, placement_offset, osu_pixel_multiplier)
         print()
 
     def get_hit_objects_for_offset(self, offset):
@@ -146,7 +153,8 @@ class GameFrameManager:
         self.placement_offset = [
             round((size[i] - self.playfield_size[i]) / 2) for i in (0, 1)
         ]
-        self.osu_pixel_multiplier = self.playfield_size[0] / osu_pixel_window[0]
+        self.osu_pixel_multiplier = self.playfield_size[0] / \
+            osu_pixel_window[0]
         # Playfield size for all objects
         self.actual_playfield_size = (
             512 * self.osu_pixel_multiplier, 384 * self.osu_pixel_multiplier
@@ -165,7 +173,8 @@ class GameFrameManager:
         self.pekora = pygame.transform.smoothscale(pekora, (128, 128))
         self.pekora_angle = 0
 
-        self.original_hitcircle = pygame.image.load(r'resources\\hitcircle.png')
+        self.original_hitcircle = pygame.image.load(
+            r'resources\\hitcircle.png')
         self.hitcircle = None
         self.plain_circle = None
 
@@ -343,6 +352,12 @@ class Game:
         self.current_map = None
         self.fps = fps
         self.is_background_enabled = is_background_enabled
+        self.config = ConfigurationManager().load()
+
+        self.songs_folder = self.config.get("songs_path")[0] if self.config.get(
+            "songs_path")[0] is not None else self.ask_songs_folder()
+        # TO-DO: It still asks in terminal, should remove that.
+
         self.debug_mode = DebugMode(debug_mode)
 
         # Initialize pygame
@@ -383,6 +398,11 @@ class Game:
                 5: self.audio_manager.decrease_volume,
             }
         }
+
+    def ask_songs_folder(self):
+        folder = filedialog.askdirectory()
+        self.config.set("songs_path", folder).save()
+        return folder
 
     # Event functions
 
@@ -470,7 +490,8 @@ class Game:
 
     def handle_audio(self):
         if not self.on_start_screen and not self.audio_manager.beatmap_audio_playing and self.frame_manager.current_offset >= 0:
-            self.audio_manager.load_and_play_audio(self.current_map.general.audio_file, is_beatmap_audio=True)
+            self.audio_manager.load_and_play_audio(
+                self.current_map.general.audio_file, is_beatmap_audio=True)
 
     def run(self):
         self.running = True
