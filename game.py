@@ -8,6 +8,9 @@ from constants import *
 from enums import DebugMode
 
 
+# TODO: consider moving logic for calculating resolution and such to its own class
+
+
 class ObjectManager:
     def __init__(self):
         self.hit_objects = None
@@ -134,6 +137,8 @@ class GameFrameManager:
         w = size[0] * 0.8
         h = size[1] * 0.8
         # Visual playfield size
+        # Scale playfield size by the osu_pixel_window
+        # Size is limited based on resolution of width and height
         self.playfield_size = (h / osu_pixel_window[1] * osu_pixel_window[0], h) \
             if w / osu_pixel_window[0] * osu_pixel_window[1] > h \
             else (w, w / osu_pixel_window[0] * osu_pixel_window[1])
@@ -160,8 +165,7 @@ class GameFrameManager:
         self.pekora = pygame.transform.smoothscale(pekora, (128, 128))
         self.pekora_angle = 0
 
-        self.original_hitcircle = pygame.image.load(
-            r'resources\\hitcircle.png')
+        self.original_hitcircle = pygame.image.load(r'resources\\hitcircle.png')
         self.hitcircle = None
         self.plain_circle = None
 
@@ -290,6 +294,10 @@ class GameFrameManager:
                          (self.placement_offset[0], self.placement_offset[1],
                           self.playfield_size[0], self.playfield_size[1]),
                          width=1)
+        pygame.draw.rect(self.window, (255, 0, 0),
+                         (self.actual_placement_offset[0], self.actual_placement_offset[1],
+                          self.actual_playfield_size[0], self.actual_playfield_size[1]),
+                         width=1)
 
     def draw_objects(self):
         self.current_offset += self.clock.get_time()
@@ -316,12 +324,11 @@ class GameFrameManager:
     def draw_volume(self):
         pygame.draw.rect(self.window, (255, 255, 255),
                          (self.size[0]-164, self.size[1]-64-25, 100, 16), 1)
-        pygame.draw.rect(self.window, (255, 255, 255),
-                         (self.size[0]-164, self.size[1]-64-25, self.audio_manager.volume*100, 16), 0)
 
     @property
     def map_ended(self):
-        return self.current_offset > self.current_map.hit_objects[-1].time
+        last_obj = self.current_map.hit_objects[-1]
+        return self.current_offset > (last_obj.time if not hasattr(last_obj, "end_time") else last_obj.end_time)
 
 
 class Game:
