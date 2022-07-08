@@ -343,7 +343,10 @@ class GameFrameManager:
 class Game:
     def __init__(self, size: Sequence[int], fps: int, gamemode: GameMode, is_borderless: bool = False, is_caching_enabled=True, is_background_enabled=True, should_reset_cache=False, is_audio_enabled=True, default_volume=25, debug_mode=0):
         # Should be performed before initializing pygame
-        self.songs_folder = SongsFolder.from_path(getenv("SONGS_PATH"))
+        self.config = ConfigurationManager.load()
+        self.songs_folder = SongsFolder.from_path(
+            self.config.get('songs_path') if self.config.get('songs_path') is not None else self.ask_songs_folder()
+        )
 
         # Game attributes
         self.size = size
@@ -352,10 +355,6 @@ class Game:
         self.current_map = None
         self.fps = fps
         self.is_background_enabled = is_background_enabled
-        self.config = ConfigurationManager().load()
-
-        self.songs_folder = self.config.get("songs_path")[0] if self.config.get(
-            "songs_path")[0] is not None else self.ask_songs_folder()
         # TO-DO: It still asks in terminal, should remove that.
 
         self.debug_mode = DebugMode(debug_mode)
