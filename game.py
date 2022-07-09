@@ -333,6 +333,8 @@ class GameFrameManager:
     def draw_volume(self):
         pygame.draw.rect(self.window, (255, 255, 255),
                          (self.size[0]-164, self.size[1]-64-25, 100, 16), 1)
+        pygame.draw.rect(self.window, (255, 255, 255),
+                         (self.size[0]-164, self.size[1]-64-25, self.audio_manager.volume*100, 16), 0)
 
     @property
     def map_ended(self):
@@ -345,7 +347,8 @@ class Game:
         # Should be performed before initializing pygame
         self.config = ConfigurationManager.load()
         self.songs_folder = SongsFolder.from_path(
-            self.config.get('songs_path') if self.config.get('songs_path') is not None else self.ask_songs_folder()
+            self.config.get('songs_path') if self.config.get(
+                'songs_path') is not None else self.ask_songs_folder()
         )
 
         # Game attributes
