@@ -356,7 +356,7 @@ class Game:
         self.is_borderless = is_borderless
         self.gamemode = gamemode
         self.current_map = None
-        self.fps = fps
+        self.fps = self.config.get("rendering").get("fps_cap")
         self.is_background_enabled = is_background_enabled
         # TO-DO: It still asks in terminal, should remove that.
 
