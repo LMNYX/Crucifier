@@ -373,7 +373,7 @@ class Game:
             size, pygame.NOFRAME if is_borderless else 0)
         self.clock = pygame.time.Clock()
         self.audio_manager = AudioManager(
-            default_volume=default_volume/100, is_disabled=not is_audio_enabled)
+            default_volume=self.config.get("audio").get("volume"), is_disabled=not is_audio_enabled)
         self.frame_manager = GameFrameManager(
             size, self.window, self.clock, self.audio_manager, debug_mode=self.debug_mode)
 
