@@ -5,10 +5,11 @@ from beatmap_reader import SongsFolder, HitObjectType, GameMode
 from tkinter import filedialog
 import tkinter as tk
 from typing import Sequence
-from os import path, getenv
+from os import path
 from configuration import ConfigurationManager
-from constants import *
 from enums import DebugMode
+from resource import ResourceManager
+from resolution import ResolutionManager
 
 root = tk.Tk()
 root.withdraw()
@@ -23,7 +24,7 @@ class ObjectManager:
         self.preempt = 0
         self.fadein = 0
 
-    def load_hit_objects(self, beatmap, screen_size, placement_offset, osu_pixel_multiplier):
+    def load_hit_objects(self, beatmap, resolution):
         ar = float(beatmap.difficulty.approach_rate)
         self.preempt = 1200 + 600 * \
             (5 - ar) / 5 if ar < 5 else 1200 - 750 * (ar - 5) / 5
@@ -34,11 +35,11 @@ class ObjectManager:
 
         for i, hit_object in enumerate(self.hit_objects):
             progress = round((i / len(self.hit_objects))*20)
-            print(
-                f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
+            print(f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
             if hit_object.type == HitObjectType.SLIDER:
-                hit_object.render(
-                    screen_size, placement_offset, osu_pixel_multiplier)
+                hit_object.render(resolution.screen_size,
+                                  resolution.actual_placement_offset,
+                                  resolution.osu_pixel_multiplier)
         print()
 
     def get_hit_objects_for_offset(self, offset):
@@ -135,47 +136,22 @@ class AudioManager:
 class GameFrameManager:
     def __init__(self, size, window, clock, audio_manager, debug_mode=DebugMode.NO):
         self.size = size
+        self.resolution = ResolutionManager(size)
         self.window = window
         self.clock = clock
         self.debug_mode = debug_mode
         self.status_message = None
-        self.font = pygame.font.Font("resources/Torus.otf", 16)
-        self.pekora_font = pygame.font.Font("resources/Torus.otf", 24)
-        w = size[0] * 0.8
-        h = size[1] * 0.8
-        # Visual playfield size
-        # Scale playfield size by the osu_pixel_window
-        # Size is limited based on resolution of width and height
-        self.playfield_size = (h / osu_pixel_window[1] * osu_pixel_window[0], h) \
-            if w / osu_pixel_window[0] * osu_pixel_window[1] > h \
-            else (w, w / osu_pixel_window[0] * osu_pixel_window[1])
-        self.playfield_size = tuple(map(round, self.playfield_size))
-        self.placement_offset = [
-            round((size[i] - self.playfield_size[i]) / 2) for i in (0, 1)
-        ]
-        self.osu_pixel_multiplier = self.playfield_size[0] / \
-            osu_pixel_window[0]
-        # Playfield size for all objects
-        self.actual_playfield_size = (
-            512 * self.osu_pixel_multiplier, 384 * self.osu_pixel_multiplier
-        )
-        self.actual_placement_offset = [
-            round((size[i] - self.actual_playfield_size[i]) / 2) for i in (0, 1)
-        ]
-        self.object_size = 0
+
         self.object_manager = ObjectManager()
         self.current_map = None
         self.current_offset = 0
 
         self.audio_manager = audio_manager
 
-        pekora = pygame.image.load(r'resources\\pekora.png')
-        self.pekora = pygame.transform.smoothscale(pekora, (128, 128))
         self.pekora_angle = 0
+        self.cursor_pos = (0, 0)
 
-        self.original_hitcircle = pygame.image.load(
-            r'resources\\hitcircle.png')
-        self.hitcircle = None
+        self.resources = ResourceManager(self.resolution)
         self.plain_circle = None
 
         self.background = None
@@ -196,13 +172,10 @@ class GameFrameManager:
         beatmap.load()
         self.current_map = beatmap
 
-        self.object_manager.load_hit_objects(beatmap, self.size,
-                                             self.actual_placement_offset, self.osu_pixel_multiplier)
+        self.object_manager.load_hit_objects(beatmap, self.resolution)
+        self.resolution.load_size(beatmap.difficulty.circle_size)
+        self.resources.load_map(beatmap)
 
-        self.object_size = round(
-            (54.4 - 4.48 * float(beatmap.difficulty.circle_size)) * 2 * self.osu_pixel_multiplier)
-        self.hitcircle = pygame.transform.smoothscale(
-            self.original_hitcircle, (self.object_size, self.object_size))
         self.plain_circle = self.create_plain_circle()
 
         self.current_offset = beatmap.hit_objects[0].time - \
@@ -218,7 +191,7 @@ class GameFrameManager:
             self.background_fading = True
 
     def create_plain_circle(self):
-        size = self.object_size
+        size = self.resolution.object_size
         circle = np.zeros((size, size, 3), dtype=np.uint8)
         for y in range(size):
             for x in range(size):
@@ -240,7 +213,8 @@ class GameFrameManager:
         return n + 19
 
     def render_debug(self):
-        text_surface = self.font.render(f'Map: {self.current_map.metadata.artist} - '
+        font = self.resources.font
+        text_surface = font.render(f'Map: {self.current_map.metadata.artist} - '
                                         f'{self.current_map.metadata.title} '
                                         f'[{self.current_map.metadata.version}] '
                                         f'({self.current_map.metadata.creator}) '
@@ -250,15 +224,13 @@ class GameFrameManager:
                                         if self.current_map is not None else "No map loaded.", True,
                                         (255, 255, 255))
         debug_y_offset = 0
-        fps_render = self.font.render(
-            f'FPS: {round(self.clock.get_fps())}', True, (255, 255, 255))
         debug_y_offset = self.debug_blit(
             text_surface, (0, debug_y_offset), n=debug_y_offset)
         if self.debug_mode is DebugMode.FULL:
             # Render
-            offset_render = self.font.render(
+            offset_render = font.render(
                 f'Offset: {self.current_offset}', True, (255, 255, 255))
-            tick_render = self.font.render(
+            tick_render = font.render(
                 f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', True, (255, 255, 255))
 
             # Blit
@@ -266,13 +238,15 @@ class GameFrameManager:
                 offset_render, (0, debug_y_offset), n=debug_y_offset)
             debug_y_offset = self.debug_blit(
                 tick_render, (0, debug_y_offset), n=debug_y_offset)
-        debug_y_offset = self.debug_blit(
-            fps_render, (0, debug_y_offset), n=debug_y_offset)
+
+    def draw_fps(self):
+        fps_render = self.resources.font.render(f'FPS: {round(self.clock.get_fps())}', True, (255, 255, 255))
+        self.window.blit(fps_render, (self.size[0]-70, self.size[1]-20))
 
     def draw_pekora(self):
-        rotated_image = pygame.transform.rotate(self.pekora, self.pekora_angle)
+        rotated_image = pygame.transform.rotate(self.resources.pekora, self.pekora_angle)
         if self.status_message:
-            pekora_status = self.pekora_font.render(
+            pekora_status = self.resources.pekora_font.render(
                 self.status_message, True, (255, 255, 255))
             self.window.blit(pekora_status,
                              (self.size[0]/2 - pekora_status.get_size()[0]/2,
@@ -280,7 +254,7 @@ class GameFrameManager:
                              )
         self.window.blit(rotated_image,
                          rotated_image.get_rect(
-                             center=self.pekora.get_rect(
+                             center=self.resources.pekora.get_rect(
                                  topleft=(self.size[0] / 2 - 64, self.size[1] / 2 - 64)).center).topleft)
         self.pekora_angle = 0 if self.pekora_angle >= 360 else self.pekora_angle + 0.555
 
@@ -300,35 +274,37 @@ class GameFrameManager:
 
     def draw_playfield(self):
         pygame.draw.rect(self.window, (255, 0, 0),
-                         (self.placement_offset[0], self.placement_offset[1],
-                          self.playfield_size[0], self.playfield_size[1]),
+                         self.resolution.get_playfield_rect(),
                          width=1)
         pygame.draw.rect(self.window, (255, 0, 0),
-                         (self.actual_placement_offset[0], self.actual_placement_offset[1],
-                          self.actual_playfield_size[0], self.actual_playfield_size[1]),
+                         self.resolution.get_actual_playfield_rect(),
                          width=1)
 
     def draw_objects(self):
         self.current_offset += self.clock.get_time()
         for hit_object in self.object_manager.get_hit_objects_for_offset(self.current_offset):
+            if hit_object.type == HitObjectType.SPINNER:
+                return self.draw_spinner(hit_object)
             opacity = self.object_manager.get_opacity(
                 hit_object, self.current_offset)
             # TODO: Make this more practical as opposed to statically comparing to 2
             if hit_object.type == HitObjectType.SLIDER:
                 hit_object.surf.set_alpha(opacity)
                 self.window.blit(hit_object.surf, (0, 0))
-            self.hitcircle.set_alpha(opacity)
+
+            hitcircle = self.resources.skin.hitcircle
+            hitcircle.set_alpha(opacity)
             self.plain_circle.set_alpha(opacity)
 
-            size = self.hitcircle.get_rect()
-            position = (hit_object.x * self.osu_pixel_multiplier + self.actual_placement_offset[0] - size.width//2,
-                        hit_object.y * self.osu_pixel_multiplier + self.actual_placement_offset[1] - size.height//2)
+            position = self.resolution.get_hitcircle_position(hit_object)
             self.window.blit(self.plain_circle, position)
-            self.window.blit(self.hitcircle, position)
+            self.window.blit(hitcircle, position)
 
-    def draw_cursor(self, position):
-        pygame.draw.circle(self.window, (255, 0, 0),
-                           (position[0] + self.placement_offset[0], position[1] + self.placement_offset[1]), 4)
+    def draw_spinner(self, hit_object):
+        pass
+
+    def draw_cursor(self):
+        pygame.draw.circle(self.window, (255, 0, 0), self.resolution.get_cursor_position(self.cursor_pos), 4)
 
     def draw_volume(self):
         pygame.draw.rect(self.window, (255, 255, 255),
@@ -343,16 +319,16 @@ class GameFrameManager:
 
 
 class Game:
-    def __init__(self, size: Sequence[int], fps: int, gamemode: GameMode, is_borderless: bool = False, is_caching_enabled=True, is_background_enabled=True, should_reset_cache=False, is_audio_enabled=True, default_volume=25, debug_mode=0):
+    def __init__(self, size: Sequence[int], fps: int, gamemode: GameMode, is_borderless: bool = False,
+                 is_caching_enabled=True, is_background_enabled=True, should_reset_cache=False, is_audio_enabled=True,
+                 default_volume=25, debug_mode=0):
         # Should be performed before initializing pygame
         self.config = ConfigurationManager.load()
-        self.songs_folder = SongsFolder.from_path(
-            self.config.get('songs_path') if self.config.get(
-                'songs_path') is not None else self.ask_songs_folder()
-        )
+        self.songs_folder = SongsFolder.from_path(self.config.get('songs_path')
+                                                  if self.config.get('songs_path') is not None
+                                                  else self.ask_songs_folder())
 
         # Game attributes
-        self.size = size
         self.is_borderless = is_borderless
         self.gamemode = gamemode
         self.current_map = None
@@ -365,23 +341,18 @@ class Game:
         # Initialize pygame
         pygame.init()
         pygame.font.init()
-        pygame.display.set_caption(
-            f"osu!simulation {'[b]' if is_borderless else ''}")
+        pygame.display.set_caption(f"osu!simulation {'[b]' if is_borderless else ''}")
 
         # "Helper" objects
         self.window = pygame.display.set_mode(
             size, pygame.NOFRAME if is_borderless else 0)
         self.clock = pygame.time.Clock()
-        self.audio_manager = AudioManager(
-            default_volume=self.config.get("audio").get("volume"), is_disabled=not is_audio_enabled)
-        self.frame_manager = GameFrameManager(
-            size, self.window, self.clock, self.audio_manager, debug_mode=self.debug_mode)
+        self.audio_manager = AudioManager(default_volume=self.config.get("audio").get("volume"),
+                                          is_disabled=not is_audio_enabled)
+        self.frame_manager = GameFrameManager(size, self.window, self.clock,  self.audio_manager,
+                                              debug_mode=self.debug_mode)
 
-        self.frame_manager.set_status_message(
-            "Press R to select a random map.")
-
-        self.cursor_position = (
-            self.frame_manager.playfield_size[0]/2, self.frame_manager.playfield_size[1]/2)
+        self.frame_manager.set_status_message("Press R to select a random map.")
 
         # State variables
         self.running = False
@@ -468,18 +439,20 @@ class Game:
             if self.is_background_enabled:
                 self.frame_manager.draw_background()
 
-            self.frame_manager.draw_cursor(self.cursor_position)
+            self.frame_manager.draw_cursor()
             self.frame_manager.draw_objects()
             if self.frame_manager.map_ended:
                 self.on_start_screen = True
+
+        if self.audio_manager.time_after_last_modified_volume > pygame.time.get_ticks():
+            self.frame_manager.draw_volume()
 
         if self.display_debug and self.debug_mode is not DebugMode.NO:
             self.frame_manager.render_debug()
             if self.current_map is not None:
                 self.frame_manager.draw_playfield()
 
-        if self.audio_manager.time_after_last_modified_volume > pygame.time.get_ticks():
-            self.frame_manager.draw_volume()
+        self.frame_manager.draw_fps()
 
     def handle_audio(self):
         if not self.on_start_screen and not self.audio_manager.beatmap_audio_playing and self.frame_manager.current_offset >= 0:
