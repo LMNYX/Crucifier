@@ -316,18 +316,25 @@ class GameFrameManager:
 
     def draw_objects(self):
         for hit_object in self.object_manager.get_hit_objects_for_offset(self.state.current_offset):
+            # Spinners not yet implemented
             if hit_object.type == HitObjectType.SPINNER:
                 return self.draw_spinner(hit_object)
+
+            # Get opacity for hit object
             opacity = self.object_manager.get_opacity(hit_object, self.state.current_offset)
+
+            # Draw slider body
             if hit_object.type == HitObjectType.SLIDER:
                 hit_object.surf.set_alpha(opacity)
                 self.window.blit(hit_object.surf, (0, 0))
 
+            # Prepare the hit object's circle
             hitcircle = self.resources.skin.hitcircles[self.object_manager.get_combo_color(hit_object)]
             hitcircle.set_alpha(opacity)
             hitcircleoverlay = self.resources.skin.hitcircleoverlay
             hitcircleoverlay.set_alpha(opacity)
 
+            # Draw the rest of the hit object
             position = self.resolution.get_hitcircle_position(hit_object)
             self.window.blit(hitcircle, position)
             self.window.blit(hitcircleoverlay, position)
@@ -335,10 +342,15 @@ class GameFrameManager:
                 self.draw_approach_circle(hit_object, opacity, position)
 
     def draw_approach_circle(self, hit_object, opacity, position):
+        # Get the size of the approach circle
         approachcircle_size = round(self.object_manager.get_ac_multiplier(
             hit_object, self.state.current_offset) * self.resolution.object_size)
+        # Prepare the approach circle to the correct size
         self.resources.skin.make_approach_circle(approachcircle_size)
+
         approachcircle = self.resources.skin.approachcircle
+
+        # Set opacity and draw
         approachcircle.set_alpha(opacity)
         offset = (approachcircle_size - self.resolution.object_size) // 2
         self.window.blit(approachcircle, tuple(map(lambda x: x - offset, position)))
