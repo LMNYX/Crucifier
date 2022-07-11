@@ -244,7 +244,8 @@ class GameFrameManager:
     def draw_fps(self):
         fps_render = self.resources.font.render(
             f'FPS: {round(self.clock.get_fps())}', True, (255, 255, 255))
-        self.window.blit(fps_render, (self.size[0]-70, self.size[1]-20))
+        self.window.blit(
+            fps_render, (self.size[0]-fps_render.get_width()-4, self.size[1]-fps_render.get_height()-4))
 
     def draw_pekora(self):
         rotated_image = pygame.transform.rotate(
