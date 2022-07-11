@@ -50,6 +50,7 @@ class ObjectManager:
 
     def get_hit_objects_for_offset(self, offset):
         index = self.obj_offset
+        objects = []
         while True:
             if index == len(self.hit_objects):
                 break
@@ -62,7 +63,9 @@ class ObjectManager:
             if offset < self.hit_objects[index].time-self.preempt:
                 break
             index += 1
-            yield self.hit_objects[index-1]
+            objects.append(self.hit_objects[index-1])
+        objects.reverse()
+        return objects
 
     def get_opacity(self, hit_object, offset):
         # Time at which circle becomes 100% opacity
@@ -233,7 +236,7 @@ class GameFrameManager:
             background_ratio = self.size[1]/self.background.get_size()[1] + 0.1
             self.background = pygame.transform.smoothscale(self.background, (
                 self.background.get_size()[0] * background_ratio,
-                self.background.get_size()[1] * background_ratio))
+                self.background.get_size()[1] * background_ratio)).convert()
             self.state.begin_background_fade()
 
     def create_plain_circle(self, color):
@@ -282,8 +285,8 @@ class GameFrameManager:
     def draw_fps(self):
         fps_render = self.resources.font.render(
             f'FPS: {round(self.clock.get_fps())}', True, (255, 255, 255))
-        self.window.blit(
-            fps_render, (self.size[0]-fps_render.get_width()-4, self.size[1]-fps_render.get_height()-4))
+        self.window.blit(fps_render, (self.size[0]-fps_render.get_width()-4,
+                                      self.size[1]-fps_render.get_height()-4))
 
     def draw_pekora(self):
         rotated_image = pygame.transform.rotate(self.resources.pekora, self.state.pekora_angle)
@@ -362,9 +365,16 @@ class Game:
         self.is_borderless = is_borderless
         self.gamemode = gamemode
         self.current_map = None
-        self.fps = self.config.get("rendering").get("fps_cap")
         self.is_background_enabled = is_background_enabled
         # TO-DO: It still asks in terminal, should remove that.
+
+        # Load settings
+        self.fps = self.config.get("rendering").get("fps_cap") if fps == -1 else fps
+        default_volume = self.config.get("audio").get("volume") if default_volume == -1 else default_volume
+        if self.fps != self.config.get("rendering").get("fps_cap"):
+            self.config.get("rendering").set("fps_cap", self.fps)
+        if default_volume != self.config.get("audio").get("volume"):
+            self.config.get("audio").set("volume", default_volume)
 
         self.debug_mode = DebugMode(debug_mode)
 
@@ -383,8 +393,7 @@ class Game:
         self.resolution = ResolutionManager(size)
         self.resources = ResourceManager(self.resolution)
         self.state = GameStateManager(clock=self.clock, object_manager=self.object_manager)
-        self.audio_manager = AudioManager(default_volume=self.config.get("audio").get("volume"),
-                                          is_disabled=not is_audio_enabled)
+        self.audio_manager = AudioManager(default_volume=default_volume, is_disabled=not is_audio_enabled)
         self.frame_manager = GameFrameManager(size, self, debug_mode=self.debug_mode)
 
         self.frame_manager.set_status_message(
