@@ -35,7 +35,8 @@ class ObjectManager:
 
         for i, hit_object in enumerate(self.hit_objects):
             progress = round((i / len(self.hit_objects))*20)
-            print(f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
+            print(
+                f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
             if hit_object.type == HitObjectType.SLIDER:
                 hit_object.render(resolution.screen_size,
                                   resolution.actual_placement_offset,
@@ -208,24 +209,25 @@ class GameFrameManager:
     def skip(self):
         self.current_offset = self.current_map.hit_objects[0].time-2500
 
-    def debug_blit(self, *args, n=0):
+    def debug_blit(self, *args, n=0, pixel_skip=19):
         self.window.blit(*args)
-        return n + 19
+        return n + pixel_skip
 
     def render_debug(self):
         font = self.resources.font
+        font_size = font.size("a")[1]
         text_surface = font.render(f'Map: {self.current_map.metadata.artist} - '
-                                        f'{self.current_map.metadata.title} '
-                                        f'[{self.current_map.metadata.version}] '
-                                        f'({self.current_map.metadata.creator}) '
-                                        # f'{round(self.current_map.nm_sr, 2)}*, '  # TODO: star rating
-                                        f'AR: {self.current_map.difficulty.approach_rate}, '
-                                        f'CS: {self.current_map.difficulty.circle_size}'
-                                        if self.current_map is not None else "No map loaded.", True,
-                                        (255, 255, 255))
+                                   f'{self.current_map.metadata.title} '
+                                   f'[{self.current_map.metadata.version}] '
+                                   f'({self.current_map.metadata.creator}) '
+                                   # f'{round(self.current_map.nm_sr, 2)}*, '  # TODO: star rating
+                                   f'AR: {self.current_map.difficulty.approach_rate}, '
+                                   f'CS: {self.current_map.difficulty.circle_size}'
+                                   if self.current_map is not None else "No map loaded.", True,
+                                   (255, 255, 255))
         debug_y_offset = 0
         debug_y_offset = self.debug_blit(
-            text_surface, (0, debug_y_offset), n=debug_y_offset)
+            text_surface, (0, debug_y_offset), n=debug_y_offset, pixel_skip=font_size)
         if self.debug_mode is DebugMode.FULL:
             # Render
             offset_render = font.render(
@@ -235,16 +237,18 @@ class GameFrameManager:
 
             # Blit
             debug_y_offset = self.debug_blit(
-                offset_render, (0, debug_y_offset), n=debug_y_offset)
+                offset_render, (0, debug_y_offset), n=debug_y_offset, pixel_skip=font_size)
             debug_y_offset = self.debug_blit(
-                tick_render, (0, debug_y_offset), n=debug_y_offset)
+                tick_render, (0, debug_y_offset), n=debug_y_offset, pixel_skip=font_size)
 
     def draw_fps(self):
-        fps_render = self.resources.font.render(f'FPS: {round(self.clock.get_fps())}', True, (255, 255, 255))
+        fps_render = self.resources.font.render(
+            f'FPS: {round(self.clock.get_fps())}', True, (255, 255, 255))
         self.window.blit(fps_render, (self.size[0]-70, self.size[1]-20))
 
     def draw_pekora(self):
-        rotated_image = pygame.transform.rotate(self.resources.pekora, self.pekora_angle)
+        rotated_image = pygame.transform.rotate(
+            self.resources.pekora, self.pekora_angle)
         if self.status_message:
             pekora_status = self.resources.pekora_font.render(
                 self.status_message, True, (255, 255, 255))
@@ -304,7 +308,8 @@ class GameFrameManager:
         pass
 
     def draw_cursor(self):
-        pygame.draw.circle(self.window, (255, 0, 0), self.resolution.get_cursor_position(self.cursor_pos), 4)
+        pygame.draw.circle(self.window, (255, 0, 0),
+                           self.resolution.get_cursor_position(self.cursor_pos), 4)
 
     def draw_volume(self):
         pygame.draw.rect(self.window, (255, 255, 255),
@@ -341,7 +346,8 @@ class Game:
         # Initialize pygame
         pygame.init()
         pygame.font.init()
-        pygame.display.set_caption(f"osu!simulation {'[b]' if is_borderless else ''}")
+        pygame.display.set_caption(
+            f"osu!simulation {'[b]' if is_borderless else ''}")
 
         # "Helper" objects
         self.window = pygame.display.set_mode(
@@ -352,7 +358,8 @@ class Game:
         self.frame_manager = GameFrameManager(size, self.window, self.clock,  self.audio_manager,
                                               debug_mode=self.debug_mode)
 
-        self.frame_manager.set_status_message("Press R to select a random map.")
+        self.frame_manager.set_status_message(
+            "Press R to select a random map.")
 
         # State variables
         self.running = False
