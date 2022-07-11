@@ -12,12 +12,11 @@ class ResourceManager:
         self.beatmap = BeatmapResourceManager()
 
         pekora = pygame.image.load(path.join(self.path, "pekora.png"))
-        self.pekora = pygame.transform.smoothscale(pekora, (128, 128))
+        self.pekora = pygame.transform.smoothscale(pekora, (128, 128)).convert_alpha()
         self.font_size = int(16 * self.resolution.screen_size[1] / 1080)
-        self.font = pygame.font.Font(
-            path.join(self.path, "Torus.otf"), self.font_size)
-        self.pekora_font = pygame.font.Font(
-            path.join(self.path, "Torus.otf"), int(24 * self.resolution.screen_size[1] / 1080))
+        self.font = pygame.font.Font(path.join(self.path, "Torus.otf"), self.font_size)
+        self.pekora_font = pygame.font.Font(path.join(self.path, "Torus.otf"),
+                                            int(24 * self.resolution.screen_size[1] / 1080))
 
     def load_skin(self, skin_path):
         self.skin.path = skin_path
@@ -36,7 +35,7 @@ class BaseManager:
         hd = path.join(self.path, f"{base_name}@2x.{ext}")
         if path.exists(hd):
             return pygame.image.load(hd)
-        return pygame.image.load(path.join(self.path, name))
+        return pygame.image.load(path.join(self.path, name)).convert_alpha()
 
     def load_audio(self, name):
         pass
