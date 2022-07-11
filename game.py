@@ -106,7 +106,7 @@ class AudioManager:
         if self.is_disabled or self.volume == max(0, min(1, new_volume)):
             return
         self.volume = max(0, min(1, new_volume))
-        self.time_after_last_modified_volume = pygame.time.get_ticks()+750
+        self.time_after_last_modified_volume = pygame.time.get_ticks()
         pygame.mixer.music.set_volume(new_volume)
 
     def increase_volume(self, channel=0, event=None):
@@ -506,7 +506,7 @@ class Game:
             if self.state.map_ended:
                 self.on_start_screen = True
 
-        if self.audio_manager.time_after_last_modified_volume > pygame.time.get_ticks():
+        if self.audio_manager.time_after_last_modified_volume+750 > pygame.time.get_ticks():
             self.frame_manager.draw_volume()
 
         if self.display_debug and self.debug_mode is not DebugMode.NO:
