@@ -81,6 +81,9 @@ class ObjectManager:
     def get_combo_color(self, hit_object):
         return self.hit_object_combo_colors[hit_object]
 
+    def get_ac_multiplier(self, hit_object, offset):
+        return (hit_object.time - offset) / self.preempt * 2 + 1
+
 
 class AudioManager:
     def __init__(self, default_volume=0.25, is_disabled=False, channel_amount=32):
@@ -328,6 +331,17 @@ class GameFrameManager:
             position = self.resolution.get_hitcircle_position(hit_object)
             self.window.blit(hitcircle, position)
             self.window.blit(hitcircleoverlay, position)
+            if self.state.current_offset <= hit_object.time:
+                self.draw_approach_circle(hit_object, opacity, position)
+
+    def draw_approach_circle(self, hit_object, opacity, position):
+        approachcircle_size = round(self.object_manager.get_ac_multiplier(
+            hit_object, self.state.current_offset) * self.resolution.object_size)
+        self.resources.skin.make_approach_circle(approachcircle_size)
+        approachcircle = self.resources.skin.approachcircle
+        approachcircle.set_alpha(opacity)
+        offset = (approachcircle_size - self.resolution.object_size) // 2
+        self.window.blit(approachcircle, tuple(map(lambda x: x - offset, position)))
 
     def draw_spinner(self, hit_object):
         pass

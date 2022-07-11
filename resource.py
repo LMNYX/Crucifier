@@ -19,8 +19,7 @@ class ResourceManager:
                                             int(24 * self.resolution.screen_size[1] / 1080))
 
     def load_skin(self, skin_path):
-        self.skin.path = skin_path
-        self.skin.load_skin()
+        self.skin.load_skin(skin_path)
 
     def load_map(self, map_path):
         self.beatmap.path = map_path
@@ -46,17 +45,22 @@ class SkinManager(BaseManager):
     Manages all the resources of a skin such as hit objects and hit sounds.
     """
 
-    def __init__(self,  skin_path, resolution):
-        self.resolution = resolution
-        self.path = skin_path
-        self.config = SkinConfigParser(path.join(skin_path, "skin.ini"))
+    def __init__(self,  skin_path=None, resolution=None):
+        if skin_path is not None:
+            self.resolution = resolution
+            self.path = skin_path
+            self.config = SkinConfigParser(path.join(skin_path, "skin.ini"))
 
-        self.load_skin()
-
-    def load_skin(self):
         self._hitcircle = self.load_image("hitcircle.png")
-        self._hitcircleoverlay = self.load_image("hitcircleoverlay.png")
         self.hitcircles = []
+        self._hitcircleoverlay = self.load_image("hitcircleoverlay.png")
+        self.hitcircleoverlay = None
+        self._approachcircle = self.load_image("approachcircle.png")
+        self.approachcircle = None
+
+    def load_skin(self, path):
+        self.path = path
+        self.__init__()
 
     def on_new_beatmap(self):
         self.hitcircles = [
@@ -69,6 +73,9 @@ class SkinManager(BaseManager):
         self.hitcircleoverlay = pygame.transform.smoothscale(self._hitcircleoverlay,
                                                              (self.resolution.object_size,
                                                               self.resolution.object_size))
+
+    def make_approach_circle(self, size):
+        self.approachcircle = pygame.transform.smoothscale(self._approachcircle, (size, size))
 
 
 class SkinConfigParser:
