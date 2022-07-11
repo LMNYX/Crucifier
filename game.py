@@ -37,7 +37,8 @@ class ObjectManager:
         current_combo_color = 0
         for i, hit_object in enumerate(self.hit_objects):
             progress = round((i / len(self.hit_objects))*20)
-            print(f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
+            print(
+                f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
             if hit_object.type == HitObjectType.SLIDER:
                 hit_object.render(resolution.screen_size,
                                   resolution.actual_placement_offset,
@@ -246,9 +247,9 @@ class GameFrameManager:
         surf.set_colorkey((0, 0, 0))
         return surf
 
-    def debug_blit(self, *args, n=0):
+    def debug_blit(self, *args, n=0, pixel_skip=19):
         self.window.blit(*args)
-        return n + 19
+        return n + pixel_skip
 
     def render_debug(self):
         font = self.resources.font
@@ -261,9 +262,10 @@ class GameFrameManager:
                                         f'CS: {self.state.current_map.difficulty.circle_size}'
                                         if self.state.current_map is not None else "No map loaded.", True,
                                         (255, 255, 255))
+        font_size = self.resources.font_size
         debug_y_offset = 0
         debug_y_offset = self.debug_blit(
-            text_surface, (0, debug_y_offset), n=debug_y_offset)
+            text_surface, (0, debug_y_offset), n=debug_y_offset, pixel_skip=font_size)
         if self.debug_mode is DebugMode.FULL:
             # Render
             offset_render = font.render(
@@ -273,13 +275,15 @@ class GameFrameManager:
 
             # Blit
             debug_y_offset = self.debug_blit(
-                offset_render, (0, debug_y_offset), n=debug_y_offset)
+                offset_render, (0, debug_y_offset), n=debug_y_offset, pixel_skip=font_size)
             debug_y_offset = self.debug_blit(
-                tick_render, (0, debug_y_offset), n=debug_y_offset)
+                tick_render, (0, debug_y_offset), n=debug_y_offset, pixel_skip=font_size)
 
     def draw_fps(self):
-        fps_render = self.resources.font.render(f'FPS: {round(self.clock.get_fps())}', True, (255, 255, 255))
-        self.window.blit(fps_render, (self.size[0]-70, self.size[1]-20))
+        fps_render = self.resources.font.render(
+            f'FPS: {round(self.clock.get_fps())}', True, (255, 255, 255))
+        self.window.blit(
+            fps_render, (self.size[0]-fps_render.get_width()-4, self.size[1]-fps_render.get_height()-4))
 
     def draw_pekora(self):
         rotated_image = pygame.transform.rotate(self.resources.pekora, self.state.pekora_angle)
@@ -367,7 +371,8 @@ class Game:
         # Initialize pygame
         pygame.init()
         pygame.font.init()
-        pygame.display.set_caption(f"osu!simulation {'[b]' if is_borderless else ''}")
+        pygame.display.set_caption(
+            f"osu!simulation {'[b]' if is_borderless else ''}")
 
         # "Helper" objects
         self.window = pygame.display.set_mode(
@@ -382,7 +387,8 @@ class Game:
                                           is_disabled=not is_audio_enabled)
         self.frame_manager = GameFrameManager(size, self, debug_mode=self.debug_mode)
 
-        self.frame_manager.set_status_message("Press R to select a random map.")
+        self.frame_manager.set_status_message(
+            "Press R to select a random map.")
 
         # State variables
         self.running = False
