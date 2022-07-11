@@ -215,7 +215,7 @@ class GameFrameManager:
 
     def render_debug(self):
         font = self.resources.font
-        font_size = font.size("a")[1]
+        font_size = self.resources.font_size
         text_surface = font.render(f'Map: {self.current_map.metadata.artist} - '
                                    f'{self.current_map.metadata.title} '
                                    f'[{self.current_map.metadata.version}] '

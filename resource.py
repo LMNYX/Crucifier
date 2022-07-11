@@ -12,8 +12,9 @@ class ResourceManager:
 
         pekora = pygame.image.load(path.join(self.path, "pekora.png"))
         self.pekora = pygame.transform.smoothscale(pekora, (128, 128))
+        self.font_size = int(16 * self.resolution.screen_size[1] / 1080)
         self.font = pygame.font.Font(
-            path.join(self.path, "Torus.otf"), int(16 * self.resolution.screen_size[1] / 1080))
+            path.join(self.path, "Torus.otf"), self.font_size)
         self.pekora_font = pygame.font.Font(
             path.join(self.path, "Torus.otf"), int(24 * self.resolution.screen_size[1] / 1080))
 
