@@ -6,13 +6,16 @@ class ResourceManager:
     def __init__(self, resolution):
         self.resolution = resolution
         self.path = "resources"
-        self.skin = SkinManager(path.join(self.path, "default_skin"), resolution)
+        self.skin = SkinManager(
+            path.join(self.path, "default_skin"), resolution)
         self.beatmap = BeatmapResourceManager()
 
         pekora = pygame.image.load(path.join(self.path, "pekora.png"))
         self.pekora = pygame.transform.smoothscale(pekora, (128, 128))
-        self.font = pygame.font.Font(path.join(self.path, "Torus.otf"), 16)
-        self.pekora_font = pygame.font.Font(path.join(self.path, "Torus.otf"), 24)
+        self.font = pygame.font.Font(
+            path.join(self.path, "Torus.otf"), int(16 * self.resolution.screen_size[1] / 1080))
+        self.pekora_font = pygame.font.Font(
+            path.join(self.path, "Torus.otf"), int(24 * self.resolution.screen_size[1] / 1080))
 
     def load_skin(self, skin_path):
         self.skin.path = skin_path
