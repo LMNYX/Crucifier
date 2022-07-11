@@ -20,11 +20,12 @@ root.withdraw()
 class ObjectManager:
     def __init__(self):
         self.hit_objects = None
+        self.hit_object_combo_colors = {}
         self.obj_offset = 0
         self.preempt = 0
         self.fadein = 0
 
-    def load_hit_objects(self, beatmap, resolution):
+    def load_hit_objects(self, beatmap, resolution, resources):
         ar = float(beatmap.difficulty.approach_rate)
         self.preempt = 1200 + 600 * \
             (5 - ar) / 5 if ar < 5 else 1200 - 750 * (ar - 5) / 5
@@ -33,6 +34,7 @@ class ObjectManager:
         self.hit_objects = list(beatmap.hit_objects)  # new list object
         self.obj_offset = 0
 
+        current_combo_color = 0
         for i, hit_object in enumerate(self.hit_objects):
             progress = round((i / len(self.hit_objects))*20)
             print(f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
@@ -40,6 +42,9 @@ class ObjectManager:
                 hit_object.render(resolution.screen_size,
                                   resolution.actual_placement_offset,
                                   resolution.osu_pixel_multiplier)
+            if hit_object.new_combo:
+                current_combo_color = (current_combo_color + 1) % len(resources.skin.config.combo_colors)
+            self.hit_object_combo_colors[hit_object] = current_combo_color
         print()
 
     def get_hit_objects_for_offset(self, offset):
@@ -63,6 +68,9 @@ class ObjectManager:
         clear = hit_object.time - self.preempt + self.fadein
         return 255 if offset >= clear else 255 - round(
             (clear - offset) / self.fadein * 255)
+
+    def get_combo_color(self, hit_object):
+        return self.hit_object_combo_colors[hit_object]
 
 
 class AudioManager:
@@ -133,29 +141,69 @@ class AudioManager:
         self.play_audio(channel=channel)
 
 
+class GameStateManager:
+    def __init__(self, beatmap=None, clock=None, object_manager=None):
+        if clock is not None:
+            self.clock = clock
+        if object_manager is not None:
+            self.object_manager = object_manager
+        self.current_map = beatmap
+        self.current_offset = 0 if beatmap is None else \
+            min(0, beatmap.hit_objects[0].time - self.object_manager.preempt - 3000)
+        self.current_combo_color = 0
+        self.counted_objects = []
+        self.cursor_pos = (0, 0)
+        self.pekora_angle = 0
+        self.background_fading = False
+
+    def set_default(self, beatmap):
+        self.__init__(beatmap)
+
+    @property
+    def can_skip(self):
+        return self.current_offset < self.current_map.hit_objects[0].time - 3000
+
+    @property
+    def map_ended(self):
+        last_obj = self.current_map.hit_objects[-1]
+        return self.current_offset > (last_obj.time if not hasattr(last_obj, "end_time") else last_obj.end_time)
+
+    def skip(self):
+        self.current_offset = self.current_map.hit_objects[0].time - 2500
+
+    def rotate_pekora(self):
+        self.pekora_angle = 0 if self.pekora_angle >= 360 else self.pekora_angle + 0.555
+
+    def begin_background_fade(self):
+        self.background_fading = True
+
+    def get_background_fade(self):
+        opacity = round(max(50, (self.current_map.hit_objects[0].time - self.current_offset) / 500 * 255))
+        if opacity == 50:
+            self.background_fading = False
+        return opacity
+
+    def advance(self):
+        self.current_offset += self.clock.get_time()
+
+
 class GameFrameManager:
-    def __init__(self, size, window, clock, audio_manager, debug_mode=DebugMode.NO):
+    def __init__(self, size, parent, debug_mode=DebugMode.NO):
         self.size = size
-        self.resolution = ResolutionManager(size)
-        self.window = window
-        self.clock = clock
+        self.window = parent.window
+        self.clock = parent.clock
         self.debug_mode = debug_mode
         self.status_message = None
 
-        self.object_manager = ObjectManager()
-        self.current_map = None
-        self.current_offset = 0
+        self.resolution = parent.resolution
+        self.resources = parent.resources
+        self.object_manager = parent.object_manager
+        self.state = parent.state
+        self.state.resources = self.resources
+        self.audio_manager = parent.audio_manager
 
-        self.audio_manager = audio_manager
-
-        self.pekora_angle = 0
-        self.cursor_pos = (0, 0)
-
-        self.resources = ResourceManager(self.resolution)
-        self.plain_circle = None
-
+        self.plain_circles = []
         self.background = None
-        self.background_fading = False
 
     def set_status_message(self, message):
         self.status_message = message
@@ -170,16 +218,13 @@ class GameFrameManager:
     def load_map(self, beatmap):
         print("Loading beatmap...")
         beatmap.load()
-        self.current_map = beatmap
 
-        self.object_manager.load_hit_objects(beatmap, self.resolution)
+        self.object_manager.load_hit_objects(beatmap, self.resolution, self.resources)
         self.resolution.load_size(beatmap.difficulty.circle_size)
         self.resources.load_map(beatmap)
+        self.state.set_default(beatmap)
 
-        self.plain_circle = self.create_plain_circle()
-
-        self.current_offset = beatmap.hit_objects[0].time - \
-            self.object_manager.preempt - 3000
+        self.plain_circles = list(map(self.create_plain_circle, self.resources.skin.config.combo_colors))
 
         bg_path = self.get_background_path(beatmap)
         if bg_path:
@@ -188,25 +233,18 @@ class GameFrameManager:
             self.background = pygame.transform.smoothscale(self.background, (
                 self.background.get_size()[0] * background_ratio,
                 self.background.get_size()[1] * background_ratio))
-            self.background_fading = True
+            self.state.begin_background_fade()
 
-    def create_plain_circle(self):
+    def create_plain_circle(self, color):
         size = self.resolution.object_size
         circle = np.zeros((size, size, 3), dtype=np.uint8)
         for y in range(size):
             for x in range(size):
                 if (x - size / 2)**2 + (y - size / 2)**2 < (size / 2)**2:
-                    circle[y, x] = (255, 255, 255)
+                    circle[y, x] = color
         surf = pygame.surfarray.make_surface(circle)
         surf.set_colorkey((0, 0, 0))
         return surf
-
-    @property
-    def can_skip(self):
-        return self.current_offset < self.current_map.hit_objects[0].time-3000
-
-    def skip(self):
-        self.current_offset = self.current_map.hit_objects[0].time-2500
 
     def debug_blit(self, *args, n=0):
         self.window.blit(*args)
@@ -214,14 +252,14 @@ class GameFrameManager:
 
     def render_debug(self):
         font = self.resources.font
-        text_surface = font.render(f'Map: {self.current_map.metadata.artist} - '
-                                        f'{self.current_map.metadata.title} '
-                                        f'[{self.current_map.metadata.version}] '
-                                        f'({self.current_map.metadata.creator}) '
+        text_surface = font.render(f'Map: {self.state.current_map.metadata.artist} - '
+                                        f'{self.state.current_map.metadata.title} '
+                                        f'[{self.state.current_map.metadata.version}] '
+                                        f'({self.state.current_map.metadata.creator}) '
                                         # f'{round(self.current_map.nm_sr, 2)}*, '  # TODO: star rating
-                                        f'AR: {self.current_map.difficulty.approach_rate}, '
-                                        f'CS: {self.current_map.difficulty.circle_size}'
-                                        if self.current_map is not None else "No map loaded.", True,
+                                        f'AR: {self.state.current_map.difficulty.approach_rate}, '
+                                        f'CS: {self.state.current_map.difficulty.circle_size}'
+                                        if self.state.current_map is not None else "No map loaded.", True,
                                         (255, 255, 255))
         debug_y_offset = 0
         debug_y_offset = self.debug_blit(
@@ -229,7 +267,7 @@ class GameFrameManager:
         if self.debug_mode is DebugMode.FULL:
             # Render
             offset_render = font.render(
-                f'Offset: {self.current_offset}', True, (255, 255, 255))
+                f'Offset: {self.state.current_offset}', True, (255, 255, 255))
             tick_render = font.render(
                 f'pygame.time.get_ticks(): {pygame.time.get_ticks()}', True, (255, 255, 255))
 
@@ -244,7 +282,7 @@ class GameFrameManager:
         self.window.blit(fps_render, (self.size[0]-70, self.size[1]-20))
 
     def draw_pekora(self):
-        rotated_image = pygame.transform.rotate(self.resources.pekora, self.pekora_angle)
+        rotated_image = pygame.transform.rotate(self.resources.pekora, self.state.pekora_angle)
         if self.status_message:
             pekora_status = self.resources.pekora_font.render(
                 self.status_message, True, (255, 255, 255))
@@ -256,21 +294,15 @@ class GameFrameManager:
                          rotated_image.get_rect(
                              center=self.resources.pekora.get_rect(
                                  topleft=(self.size[0] / 2 - 64, self.size[1] / 2 - 64)).center).topleft)
-        self.pekora_angle = 0 if self.pekora_angle >= 360 else self.pekora_angle + 0.555
+        self.state.rotate_pekora()
 
     def draw_background(self):
         if self.background is None:
             return
-        if self.background_fading and self.fade_background():
-            self.background_fading = False
-        self.window.blit(
-            self.background, (self.size[0]/2-(self.background.get_size()[0]/2), self.size[1]/2-(self.background.get_size()[1]/2)))
-
-    def fade_background(self):
-        opacity = round(max(50, (self.current_map.hit_objects[0].time -
-                                 self.current_offset) / 500 * 255))
-        self.background.set_alpha(opacity)
-        return opacity == 50
+        if self.state.background_fading:
+            self.background.set_alpha(self.state.get_background_fade())
+        self.window.blit(self.background, (self.size[0]/2-(self.background.get_size()[0]/2),
+                                           self.size[1]/2-(self.background.get_size()[1]/2)))
 
     def draw_playfield(self):
         pygame.draw.rect(self.window, (255, 0, 0),
@@ -281,12 +313,10 @@ class GameFrameManager:
                          width=1)
 
     def draw_objects(self):
-        self.current_offset += self.clock.get_time()
-        for hit_object in self.object_manager.get_hit_objects_for_offset(self.current_offset):
+        for hit_object in self.object_manager.get_hit_objects_for_offset(self.state.current_offset):
             if hit_object.type == HitObjectType.SPINNER:
                 return self.draw_spinner(hit_object)
-            opacity = self.object_manager.get_opacity(
-                hit_object, self.current_offset)
+            opacity = self.object_manager.get_opacity(hit_object, self.state.current_offset)
             # TODO: Make this more practical as opposed to statically comparing to 2
             if hit_object.type == HitObjectType.SLIDER:
                 hit_object.surf.set_alpha(opacity)
@@ -294,28 +324,24 @@ class GameFrameManager:
 
             hitcircle = self.resources.skin.hitcircle
             hitcircle.set_alpha(opacity)
-            self.plain_circle.set_alpha(opacity)
+            base_circle = self.plain_circles[self.object_manager.get_combo_color(hit_object)]
+            base_circle.set_alpha(opacity)
 
             position = self.resolution.get_hitcircle_position(hit_object)
-            self.window.blit(self.plain_circle, position)
+            self.window.blit(base_circle, position)
             self.window.blit(hitcircle, position)
 
     def draw_spinner(self, hit_object):
         pass
 
     def draw_cursor(self):
-        pygame.draw.circle(self.window, (255, 0, 0), self.resolution.get_cursor_position(self.cursor_pos), 4)
+        pygame.draw.circle(self.window, (255, 0, 0), self.resolution.get_cursor_position(self.state.cursor_pos), 4)
 
     def draw_volume(self):
         pygame.draw.rect(self.window, (255, 255, 255),
                          (self.size[0]-164, self.size[1]-64-25, 100, 16), 1)
         pygame.draw.rect(self.window, (255, 255, 255),
                          (self.size[0]-164, self.size[1]-64-25, self.audio_manager.volume*100, 16), 0)
-
-    @property
-    def map_ended(self):
-        last_obj = self.current_map.hit_objects[-1]
-        return self.current_offset > (last_obj.time if not hasattr(last_obj, "end_time") else last_obj.end_time)
 
 
 class Game:
@@ -347,10 +373,14 @@ class Game:
         self.window = pygame.display.set_mode(
             size, pygame.NOFRAME if is_borderless else 0)
         self.clock = pygame.time.Clock()
+
+        self.object_manager = ObjectManager()
+        self.resolution = ResolutionManager(size)
+        self.resources = ResourceManager(self.resolution)
+        self.state = GameStateManager(clock=self.clock, object_manager=self.object_manager)
         self.audio_manager = AudioManager(default_volume=self.config.get("audio").get("volume"),
                                           is_disabled=not is_audio_enabled)
-        self.frame_manager = GameFrameManager(size, self.window, self.clock,  self.audio_manager,
-                                              debug_mode=self.debug_mode)
+        self.frame_manager = GameFrameManager(size, self, debug_mode=self.debug_mode)
 
         self.frame_manager.set_status_message("Press R to select a random map.")
 
@@ -406,8 +436,8 @@ class Game:
         self.display_debug = not self.display_debug
 
     def on_skip(self, event):
-        if self.frame_manager.can_skip:
-            self.frame_manager.skip()
+        if self.state.can_skip:
+            self.state.skip()
 
     def on_force_end(self, event):
         if self.on_start_screen:
@@ -441,7 +471,7 @@ class Game:
 
             self.frame_manager.draw_cursor()
             self.frame_manager.draw_objects()
-            if self.frame_manager.map_ended:
+            if self.state.map_ended:
                 self.on_start_screen = True
 
         if self.audio_manager.time_after_last_modified_volume > pygame.time.get_ticks():
@@ -455,9 +485,13 @@ class Game:
         self.frame_manager.draw_fps()
 
     def handle_audio(self):
-        if not self.on_start_screen and not self.audio_manager.beatmap_audio_playing and self.frame_manager.current_offset >= 0:
+        if not self.on_start_screen and not self.audio_manager.beatmap_audio_playing and \
+                self.state.current_offset >= 0:
             self.audio_manager.load_and_play_audio(
                 self.current_map.general.audio_file, is_beatmap_audio=True)
+
+    def handle_state(self):
+        self.state.advance()
 
     def run(self):
         self.running = True
@@ -466,6 +500,7 @@ class Game:
             self.handle_events()
             self.handle_audio()
             self.draw()
+            self.handle_state()
 
             pygame.display.update()
             self.clock.tick(self.fps)
