@@ -55,11 +55,20 @@ class SkinManager(BaseManager):
 
     def load_skin(self):
         self._hitcircle = self.load_image("hitcircle.png")
-        self.hitcircle = None
+        self._hitcircleoverlay = self.load_image("hitcircleoverlay.png")
+        self.hitcircles = []
 
     def on_new_beatmap(self):
-        self.hitcircle = pygame.transform.smoothscale(self._hitcircle, (self.resolution.object_size,
-                                                                        self.resolution.object_size))
+        self.hitcircles = [
+            pygame.transform.smoothscale(self._hitcircle, (self.resolution.object_size,
+                                                           self.resolution.object_size))
+            for _ in self.config.combo_colors
+        ]
+        for hitcircle, color in zip(self.hitcircles, self.config.combo_colors):
+            hitcircle.fill(color, special_flags=pygame.BLEND_RGBA_MULT)
+        self.hitcircleoverlay = pygame.transform.smoothscale(self._hitcircleoverlay,
+                                                             (self.resolution.object_size,
+                                                              self.resolution.object_size))
 
 
 class SkinConfigParser:

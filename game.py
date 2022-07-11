@@ -7,7 +7,7 @@ import tkinter as tk
 from typing import Sequence
 from os import path
 from configuration import ConfigurationManager
-from enums import DebugMode
+from enums import DebugMode, SkinOption
 from resource import ResourceManager
 from resolution import ResolutionManager
 
@@ -26,6 +26,8 @@ class ObjectManager:
         self.fadein = 0
 
     def load_hit_objects(self, beatmap, resolution, resources):
+        config = resources.skin.config
+
         ar = float(beatmap.difficulty.approach_rate)
         self.preempt = 1200 + 600 * \
             (5 - ar) / 5 if ar < 5 else 1200 - 750 * (ar - 5) / 5
@@ -36,16 +38,19 @@ class ObjectManager:
 
         current_combo_color = 0
         for i, hit_object in enumerate(self.hit_objects):
+            if hit_object.new_combo:
+                current_combo_color = (current_combo_color + 1) % len(config.combo_colors)
+            self.hit_object_combo_colors[hit_object] = current_combo_color
             progress = round((i / len(self.hit_objects))*20)
             print(
                 f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
             if hit_object.type == HitObjectType.SLIDER:
-                hit_object.render(resolution.screen_size,
-                                  resolution.actual_placement_offset,
-                                  resolution.osu_pixel_multiplier)
-            if hit_object.new_combo:
-                current_combo_color = (current_combo_color + 1) % len(resources.skin.config.combo_colors)
-            self.hit_object_combo_colors[hit_object] = current_combo_color
+                color = config.combo_colors[current_combo_color] \
+                    if config.slider_track_override == SkinOption.CURRENT_COMBO_COLOR \
+                    else config.slider_track_color
+                hit_object.render(resolution.screen_size, resolution.actual_placement_offset,
+                                  resolution.osu_pixel_multiplier, color, config.slider_border,
+                                  round(5*resolution.osu_pixel_multiplier))
         print()
 
     def get_hit_objects_for_offset(self, offset):
@@ -228,8 +233,6 @@ class GameFrameManager:
         self.resources.load_map(beatmap)
         self.state.set_default(beatmap)
 
-        self.plain_circles = list(map(self.create_plain_circle, self.resources.skin.config.combo_colors))
-
         bg_path = self.get_background_path(beatmap)
         if bg_path:
             self.background = pygame.image.load(bg_path)
@@ -238,17 +241,6 @@ class GameFrameManager:
                 self.background.get_size()[0] * background_ratio,
                 self.background.get_size()[1] * background_ratio)).convert()
             self.state.begin_background_fade()
-
-    def create_plain_circle(self, color):
-        size = self.resolution.object_size
-        circle = np.zeros((size, size, 3), dtype=np.uint8)
-        for y in range(size):
-            for x in range(size):
-                if (x - size / 2)**2 + (y - size / 2)**2 < (size / 2)**2:
-                    circle[y, x] = color
-        surf = pygame.surfarray.make_surface(circle)
-        surf.set_colorkey((0, 0, 0))
-        return surf
 
     def debug_blit(self, *args, n=0, pixel_skip=19):
         self.window.blit(*args)
@@ -324,19 +316,18 @@ class GameFrameManager:
             if hit_object.type == HitObjectType.SPINNER:
                 return self.draw_spinner(hit_object)
             opacity = self.object_manager.get_opacity(hit_object, self.state.current_offset)
-            # TODO: Make this more practical as opposed to statically comparing to 2
             if hit_object.type == HitObjectType.SLIDER:
                 hit_object.surf.set_alpha(opacity)
                 self.window.blit(hit_object.surf, (0, 0))
 
-            hitcircle = self.resources.skin.hitcircle
+            hitcircle = self.resources.skin.hitcircles[self.object_manager.get_combo_color(hit_object)]
             hitcircle.set_alpha(opacity)
-            base_circle = self.plain_circles[self.object_manager.get_combo_color(hit_object)]
-            base_circle.set_alpha(opacity)
+            hitcircleoverlay = self.resources.skin.hitcircleoverlay
+            hitcircleoverlay.set_alpha(opacity)
 
             position = self.resolution.get_hitcircle_position(hit_object)
-            self.window.blit(base_circle, position)
             self.window.blit(hitcircle, position)
+            self.window.blit(hitcircleoverlay, position)
 
     def draw_spinner(self, hit_object):
         pass
