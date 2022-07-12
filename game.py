@@ -335,12 +335,14 @@ class GameFrameManager:
             if hit_object.type == HitObjectType.SLIDER:
                 hit_object.surf.set_alpha(opacity)
                 self.window.blit(hit_object.surf, (0, 0))
-                # Draw slider ball
+                # Draw slider ball and follow circle
                 if self.state.current_offset >= hit_object.time:
-                    self.window.blit(self.resources.skin.config.get_animation_frame(
-                        hit_object.time, self.state.current_offset, self.resources.skin.sliderball, combo_color),
-                        self.object_manager.get_sliderball_position(self.state.current_offset, hit_object, self.resolution)
-                    )
+                    for element in (self.resources.skin.sliderball, self.resources.skin.sliderfollowcircle):
+                        self.window.blit(self.resources.skin.config.get_animation_frame(
+                            hit_object.time, self.state.current_offset, element,
+                            combo_color if isinstance(element[0], list) else None),
+                            self.object_manager.get_sliderball_position(self.state.current_offset, hit_object, self.resolution)
+                        )
                 hitcircle, hitcircleoverlay = self.resources.skin.get_circle_elements(combo_color, True)
             else:
                 hitcircle, hitcircleoverlay = self.resources.skin.get_circle_elements(combo_color)

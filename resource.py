@@ -97,6 +97,8 @@ class SkinManager(BaseManager):
         self.sliderstartcircleoverlay = None
         self._sliderball = self.load_animation("sliderb.png")
         self.sliderball = []
+        self._sliderfollowcircle = self.load_animation("sliderfollowcircle.png")
+        self.sliderfollowcircle = []
 
     def load_skin(self, path):
         self.path = path
@@ -124,6 +126,7 @@ class SkinManager(BaseManager):
         if self.sliderstartcircleoverlay is not None:
             self.sliderstartcircleoverlay = self.resize(self._sliderstartcircleoverlay)
         self.sliderball = list(map(self.create_combo_color_surfaces, map(self.resize, self._sliderball)))
+        self.sliderfollowcircle = list(map(self.resize, self._sliderfollowcircle))
 
     def make_approach_circle(self, size, combo_color):
         self.approachcircle = pygame.transform.smoothscale(self._approachcircle[combo_color], (size, size))
