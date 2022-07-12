@@ -327,11 +327,13 @@ class GameFrameManager:
             if hit_object.type == HitObjectType.SLIDER:
                 hit_object.surf.set_alpha(opacity)
                 self.window.blit(hit_object.surf, (0, 0))
+                hitcircle, hitcircleoverlay = self.resources.skin.get_circle_elements(
+                    self.object_manager.get_combo_color(hit_object), True)
+            else:
+                hitcircle, hitcircleoverlay = self.resources.skin.get_circle_elements(
+                    self.object_manager.get_combo_color(hit_object))
 
-            # Prepare the hit object's circle
-            hitcircle = self.resources.skin.hitcircles[self.object_manager.get_combo_color(hit_object)]
             hitcircle.set_alpha(opacity)
-            hitcircleoverlay = self.resources.skin.hitcircleoverlay
             hitcircleoverlay.set_alpha(opacity)
 
             # Draw the rest of the hit object

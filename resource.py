@@ -34,7 +34,9 @@ class BaseManager:
         hd = path.join(self.path, f"{base_name}@2x.{ext}")
         if path.exists(hd):
             return pygame.image.load(hd)
-        return pygame.image.load(path.join(self.path, name)).convert_alpha()
+        sd = path.join(self.path, name)
+        if path.exists(sd):
+            return pygame.image.load(sd).convert_alpha()
 
     def load_audio(self, name):
         pass
@@ -57,25 +59,41 @@ class SkinManager(BaseManager):
         self.hitcircleoverlay = None
         self._approachcircle = self.load_image("approachcircle.png")
         self.approachcircle = None
+        self._sliderstartcircle = self.load_image("sliderstartcircle.png")
+        self.sliderstartcircles = []
+        self._sliderstartcircleoverlay = self.load_image("sliderstartcircleoverlay.png")
+        self.sliderstartcircleoverlay = None
 
     def load_skin(self, path):
         self.path = path
         self.__init__()
 
+    def resize(self, img):
+        return pygame.transform.smoothscale(img, (self.resolution.object_size, self.resolution.object_size))
+
     def on_new_beatmap(self):
-        self.hitcircles = [
-            pygame.transform.smoothscale(self._hitcircle, (self.resolution.object_size,
-                                                           self.resolution.object_size))
-            for _ in self.config.combo_colors
-        ]
+        self.hitcircles = [self.resize(self._hitcircle) for _ in self.config.combo_colors]
         for hitcircle, color in zip(self.hitcircles, self.config.combo_colors):
             hitcircle.fill(color, special_flags=pygame.BLEND_RGBA_MULT)
-        self.hitcircleoverlay = pygame.transform.smoothscale(self._hitcircleoverlay,
-                                                             (self.resolution.object_size,
-                                                              self.resolution.object_size))
+        if self.sliderstartcircles:
+            self.sliderstartcircles = [self.resize(self._sliderstartcircle) for _ in self.config.combo_colors]
+            for sliderstartcircle, color in zip(self.sliderstartcircles, self.config.combo_colors):
+                sliderstartcircle.fill(color, special_flags=pygame.BLEND_RGBA_MULT)
+        self.hitcircleoverlay = self.resize(self._hitcircleoverlay)
+        if self.sliderstartcircleoverlay is not None:
+            self.sliderstartcircleoverlay = self.resize(self._sliderstartcircleoverlay)
 
     def make_approach_circle(self, size):
         self.approachcircle = pygame.transform.smoothscale(self._approachcircle, (size, size))
+
+    def get_circle_elements(self, combo_color, is_slider=False):
+        hitcircle = self.hitcircles[combo_color]
+        hitcircleoverlay = self.hitcircleoverlay
+        if is_slider and self.sliderstartcircleoverlay is not None:
+            hitcircleoverlay = self.sliderstartcircleoverlay
+        if is_slider and self.sliderstartcircles:
+            hitcircle = self.sliderstartcircles[combo_color]
+        return hitcircle, hitcircleoverlay
 
 
 class SkinConfigParser:
