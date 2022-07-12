@@ -1,5 +1,5 @@
 import pygame
-import numpy as np
+import math
 import random
 from beatmap_reader import SongsFolder, HitObjectType, GameMode
 from tkinter import filedialog
@@ -83,6 +83,13 @@ class ObjectManager:
 
     def get_ac_multiplier(self, hit_object, offset):
         return (hit_object.time - offset) / self.preempt * 2 + 1
+
+    def get_sliderball_position(self, current_offset, hit_object, resolution):
+        index = min(math.floor((current_offset - hit_object.time) /
+                               (hit_object.end_time - hit_object.time) *
+                               len(hit_object.curve.curve_points)),
+                len(hit_object.curve.curve_points)-1)
+        return resolution.get_hitcircle_position(hit_object.curve.curve_points[index])
 
 
 class AudioManager:
@@ -207,12 +214,12 @@ class GameFrameManager:
         self.debug_mode = debug_mode
         self.status_message = None
 
-        self.resolution = parent.resolution
-        self.resources = parent.resources
-        self.object_manager = parent.object_manager
-        self.state = parent.state
+        self.resolution: ResolutionManager = parent.resolution
+        self.resources: ResourceManager = parent.resources
+        self.object_manager: ObjectManager = parent.object_manager
+        self.state: GameStateManager = parent.state
         self.state.resources = self.resources
-        self.audio_manager = parent.audio_manager
+        self.audio_manager: AudioManager = parent.audio_manager
 
         self.plain_circles = []
         self.background = None
@@ -322,16 +329,21 @@ class GameFrameManager:
 
             # Get opacity for hit object
             opacity = self.object_manager.get_opacity(hit_object, self.state.current_offset)
+            combo_color = self.object_manager.get_combo_color(hit_object)
 
             # Draw slider body
             if hit_object.type == HitObjectType.SLIDER:
                 hit_object.surf.set_alpha(opacity)
                 self.window.blit(hit_object.surf, (0, 0))
-                hitcircle, hitcircleoverlay = self.resources.skin.get_circle_elements(
-                    self.object_manager.get_combo_color(hit_object), True)
+                # Draw slider ball
+                if self.state.current_offset >= hit_object.time:
+                    self.window.blit(self.resources.skin.config.get_animation_frame(
+                        hit_object.time, self.state.current_offset, self.resources.skin.sliderball, combo_color),
+                        self.object_manager.get_sliderball_position(self.state.current_offset, hit_object, self.resolution)
+                    )
+                hitcircle, hitcircleoverlay = self.resources.skin.get_circle_elements(combo_color, True)
             else:
-                hitcircle, hitcircleoverlay = self.resources.skin.get_circle_elements(
-                    self.object_manager.get_combo_color(hit_object))
+                hitcircle, hitcircleoverlay = self.resources.skin.get_circle_elements(combo_color)
 
             hitcircle.set_alpha(opacity)
             hitcircleoverlay.set_alpha(opacity)
@@ -341,14 +353,14 @@ class GameFrameManager:
             self.window.blit(hitcircle, position)
             self.window.blit(hitcircleoverlay, position)
             if self.state.current_offset <= hit_object.time:
-                self.draw_approach_circle(hit_object, opacity, position)
+                self.draw_approach_circle(hit_object, opacity, position, combo_color)
 
-    def draw_approach_circle(self, hit_object, opacity, position):
+    def draw_approach_circle(self, hit_object, opacity, position, combo_color):
         # Get the size of the approach circle
         approachcircle_size = round(self.object_manager.get_ac_multiplier(
             hit_object, self.state.current_offset) * self.resolution.object_size)
         # Prepare the approach circle to the correct size
-        self.resources.skin.make_approach_circle(approachcircle_size)
+        self.resources.skin.make_approach_circle(approachcircle_size, combo_color)
 
         approachcircle = self.resources.skin.approachcircle
 
@@ -465,6 +477,7 @@ class Game:
 
         self.on_start_screen = False
         self.frame_manager.load_map(self.current_map)
+        self.clock.get_time()  # Get time so the offset doesn't add a bajillion milliseconds
 
     def on_toggle_debug(self, event):
         self.display_debug = not self.display_debug

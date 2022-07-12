@@ -1,5 +1,6 @@
 from os import path
 import pygame
+import math
 from enums import SkinOption
 
 
@@ -28,13 +29,44 @@ class ResourceManager:
 
 
 class BaseManager:
-    def load_image(self, name):
+    def parse_file_name(self, name, animation=False):
         a = name.split(".")
         base_name, ext = ".".join(a[:-1]), a[-1]
-        hd = path.join(self.path, f"{base_name}@2x.{ext}")
+        ret = (path.join(self.path, name), path.join(self.path, f"{base_name}@2x.{ext}"))
+        if animation:
+            ret += (path.join(self.path, f"{base_name}0.{ext}"), path.join(self.path, f"{base_name}0@2x.{ext}"))
+        return ret
+
+    def format_animation_name(self, a_path, i):
+        root, name = path.split(a_path)
+        name = name.split(".")
+        base_name, ext = ".".join(name[:-1]), name[-1]
+        if base_name.endswith("@2x"):
+            return path.join(root, f"{base_name[:-3]}{str(i)}@2x.{ext}")
+        return path.join(root, f"{base_name}{str(i)}.{ext}")
+
+    def get_animations(self, a_path):
+        i = 0
+        while True:
+            frame = self.format_animation_name(a_path, i)
+            if not path.exists(frame):
+                break
+            yield pygame.image.load(frame).convert_alpha()
+            i += 1
+
+    def load_animation(self, name):
+        sd, hd, sd_a, hd_a = self.parse_file_name(name, True)
+        for a in ((hd_a, hd), (sd_a, sd)):
+            if path.exists(a[0]):
+                return list(self.get_animations(a[1]))
+        for s in (hd, sd):
+            if path.exists(s):
+                return [pygame.image.load(s).convert_alpha()]
+
+    def load_image(self, name):
+        sd, hd = self.parse_file_name(name)
         if path.exists(hd):
-            return pygame.image.load(hd)
-        sd = path.join(self.path, name)
+            return pygame.image.load(hd).convert_alpha()
         if path.exists(sd):
             return pygame.image.load(sd).convert_alpha()
 
@@ -53,16 +85,18 @@ class SkinManager(BaseManager):
             self.path = skin_path
             self.config = SkinConfigParser(path.join(skin_path, "skin.ini"))
 
-        self._hitcircle = self.load_image("hitcircle.png")
+        self._hitcircles = self.create_combo_color_surfaces(self.load_image("hitcircle.png"))
         self.hitcircles = []
         self._hitcircleoverlay = self.load_image("hitcircleoverlay.png")
         self.hitcircleoverlay = None
-        self._approachcircle = self.load_image("approachcircle.png")
+        self._approachcircle = self.create_combo_color_surfaces(self.load_image("approachcircle.png"))
         self.approachcircle = None
-        self._sliderstartcircle = self.load_image("sliderstartcircle.png")
+        self._sliderstartcircles = self.create_combo_color_surfaces(self.load_image("sliderstartcircle.png"))
         self.sliderstartcircles = []
         self._sliderstartcircleoverlay = self.load_image("sliderstartcircleoverlay.png")
         self.sliderstartcircleoverlay = None
+        self._sliderball = self.load_animation("sliderb.png")
+        self.sliderball = []
 
     def load_skin(self, path):
         self.path = path
@@ -71,20 +105,28 @@ class SkinManager(BaseManager):
     def resize(self, img):
         return pygame.transform.smoothscale(img, (self.resolution.object_size, self.resolution.object_size))
 
+    def create_combo_color_surfaces(self, surf):
+        if surf is None:
+            return
+        surfs = [surf.copy() for _ in range(len(self.config.combo_colors))]
+        self.tint(surfs)
+        return surfs
+
+    def tint(self, imgs):
+        for surf, color in zip(imgs, self.config.combo_colors):
+            surf.fill(color, special_flags=pygame.BLEND_RGBA_MULT)
+
     def on_new_beatmap(self):
-        self.hitcircles = [self.resize(self._hitcircle) for _ in self.config.combo_colors]
-        for hitcircle, color in zip(self.hitcircles, self.config.combo_colors):
-            hitcircle.fill(color, special_flags=pygame.BLEND_RGBA_MULT)
+        self.hitcircles = [self.resize(hitcircle) for hitcircle in self._hitcircles]
         if self.sliderstartcircles:
-            self.sliderstartcircles = [self.resize(self._sliderstartcircle) for _ in self.config.combo_colors]
-            for sliderstartcircle, color in zip(self.sliderstartcircles, self.config.combo_colors):
-                sliderstartcircle.fill(color, special_flags=pygame.BLEND_RGBA_MULT)
+            self.sliderstartcircles = [self.resize(sliderstartcircles) for sliderstartcircles in self._sliderstartcircles]
         self.hitcircleoverlay = self.resize(self._hitcircleoverlay)
         if self.sliderstartcircleoverlay is not None:
             self.sliderstartcircleoverlay = self.resize(self._sliderstartcircleoverlay)
+        self.sliderball = list(map(self.create_combo_color_surfaces, map(self.resize, self._sliderball)))
 
-    def make_approach_circle(self, size):
-        self.approachcircle = pygame.transform.smoothscale(self._approachcircle, (size, size))
+    def make_approach_circle(self, size, combo_color):
+        self.approachcircle = pygame.transform.smoothscale(self._approachcircle[combo_color], (size, size))
 
     def get_circle_elements(self, combo_color, is_slider=False):
         hitcircle = self.hitcircles[combo_color]
@@ -99,7 +141,7 @@ class SkinManager(BaseManager):
 class SkinConfigParser:
     LATEST_VERSION = "2.7"
     VALID_VERSIONS = ["1.0", "2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7"]
-    configs = {  # Config name: default value
+    configs = {  # {"Config name": "default value"}
         "Name": "",
         "Author": "",
         "Version": "1.0",
@@ -195,6 +237,15 @@ class SkinConfigParser:
     def format_name(name):
         name = name[0].lower() + name[1:]
         return "".join([char if char.islower() else "_"+char.lower() for char in name])
+
+    def get_animation_frame(self, start, current, frames, combo_color=None):
+        framerate = self.animation_framerate
+        if framerate == -1:
+            framerate = len(frames)
+        frame = frames[math.ceil((current - start) / 1000 * framerate) % len(frames)]
+        if isinstance(frame, list):
+            return frame[combo_color]
+        return frame
 
 
 class BeatmapResourceManager(BaseManager):

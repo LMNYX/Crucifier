@@ -37,9 +37,13 @@ class ResolutionManager:
     def get_actual_playfield_rect(self):
         return self.actual_placement_offset + self.actual_playfield_size
 
-    def get_hitcircle_position(self, hit_object):
-        return (hit_object.x * self.osu_pixel_multiplier + self.actual_placement_offset[0] - self.object_size // 2,
-                hit_object.y * self.osu_pixel_multiplier + self.actual_placement_offset[1] - self.object_size // 2)
+    def get_hitcircle_position(self, pos):
+        if hasattr(pos, "x") and hasattr(pos, "y"):
+            x, y = pos.x, pos.y
+        else:
+            x, y = pos
+        return (x * self.osu_pixel_multiplier + self.actual_placement_offset[0] - self.object_size // 2,
+                y * self.osu_pixel_multiplier + self.actual_placement_offset[1] - self.object_size // 2)
 
     def get_cursor_position(self, position):
         return (self.actual_placement_offset[0]+position[0],
