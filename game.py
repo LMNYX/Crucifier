@@ -10,6 +10,7 @@ from configuration import ConfigurationManager
 from enums import DebugMode, SkinOption
 from resource import ResourceManager
 from resolution import ResolutionManager
+import threading
 
 root = tk.Tk()
 root.withdraw()
@@ -26,8 +27,6 @@ class ObjectManager:
         self.fadein = 0
 
     def load_hit_objects(self, beatmap, resolution, resources):
-        config = resources.skin.config
-
         ar = float(beatmap.difficulty.approach_rate)
         self.preempt = 1200 + 600 * \
             (5 - ar) / 5 if ar < 5 else 1200 - 750 * (ar - 5) / 5
@@ -35,15 +34,16 @@ class ObjectManager:
             (5 - ar) / 5 if ar < 5 else 800 - 500 * (ar - 5) / 5
         self.hit_objects = list(beatmap.hit_objects)  # new list object
         self.obj_offset = 0
+        threading.Thread(target=self._do_hit_object_load, args=(resources, resolution)).start()
 
+    def _do_hit_object_load(self, resources, resolution):
+        config = resources.skin.config
         current_combo_color = 0
         for i, hit_object in enumerate(self.hit_objects):
             if hit_object.new_combo:
                 current_combo_color = (current_combo_color + 1) % len(config.combo_colors)
             self.hit_object_combo_colors[hit_object] = current_combo_color
             progress = round((i / len(self.hit_objects))*20)
-            print(
-                f"\rPre-rendering sliders: [{progress * '#'}{(20 - progress) * '-'}]", end='\r')
             if hit_object.type == HitObjectType.SLIDER:
                 color = config.combo_colors[current_combo_color] \
                     if config.slider_track_override == SkinOption.CURRENT_COMBO_COLOR \
@@ -51,7 +51,6 @@ class ObjectManager:
                 hit_object.render(resolution.screen_size, resolution.actual_placement_offset,
                                   resolution.osu_pixel_multiplier, color, config.slider_border,
                                   round(5*resolution.osu_pixel_multiplier))
-        print()
 
     def get_hit_objects_for_offset(self, offset):
         index = self.obj_offset
@@ -174,6 +173,7 @@ class GameStateManager:
         self.cursor_pos = (0, 0)
         self.pekora_angle = 0
         self.background_fading = False
+        self.currently_playing = False
 
     def set_default(self, beatmap):
         self.__init__(beatmap)
@@ -203,7 +203,12 @@ class GameStateManager:
         return opacity
 
     def advance(self):
-        self.current_offset += self.clock.get_time()
+        if self.currently_playing:
+            self.current_offset += self.clock.get_time()
+
+    def map_started(self, beatmap):
+        self.set_default(beatmap)
+        self.currently_playing = True
 
 
 class GameFrameManager:
@@ -473,13 +478,13 @@ class Game:
         try:
             self.current_map = self.get_random_beatmap()
         except IndexError as e:
-            return self.frame_manager.set_status_message("No maps found. Load maps first.")
+            return self.frame_manager.set_status_message(f"{e}")
         except Exception as e:
             return self.frame_manager.set_status_message(f"{e}")
 
         self.on_start_screen = False
         self.frame_manager.load_map(self.current_map)
-        self.clock.get_time()  # Get time so the offset doesn't add a bajillion milliseconds
+        self.state.map_started(self.current_map)
 
     def on_toggle_debug(self, event):
         self.display_debug = not self.display_debug
@@ -540,6 +545,8 @@ class Game:
                 self.current_map.general.audio_file, is_beatmap_audio=True)
 
     def handle_state(self):
+        if not self.state.currently_playing and self.current_map is not None:
+            self.state.map_started(self.current_map)
         self.state.advance()
 
     def run(self):
@@ -549,10 +556,10 @@ class Game:
             self.handle_events()
             self.handle_audio()
             self.draw()
-            self.handle_state()
 
             pygame.display.update()
             self.clock.tick(self.fps)
+            self.handle_state()
 
         pygame.time.wait(10)
         pygame.quit()
