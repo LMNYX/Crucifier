@@ -51,6 +51,7 @@ class ObjectManager:
                 hit_object.render(resolution.screen_size, resolution.actual_placement_offset,
                                   resolution.osu_pixel_multiplier, color, config.slider_border,
                                   round(5*resolution.osu_pixel_multiplier))
+        print("Finished loading all hit objects!")
 
     def get_hit_objects_for_offset(self, offset):
         index = self.obj_offset
@@ -209,6 +210,7 @@ class GameStateManager:
     def map_started(self, beatmap):
         self.set_default(beatmap)
         self.currently_playing = True
+        self.begin_background_fade()
 
 
 class GameFrameManager:
@@ -239,6 +241,16 @@ class GameFrameManager:
             if len(event) == 5 and event[0] == "0" and event[1] == "0":
                 return path.join(path.split(beatmap.path)[0], event[2] if '"' not in event[2] else event[2][1:-1])
 
+    def set_background(self, bg_path):
+        self.background = pygame.image.load(bg_path)
+        background_ratio = self.size[1] / self.background.get_size()[1] + 0.1
+        size = (self.background.get_size()[0] * background_ratio,
+                self.background.get_size()[1] * background_ratio)
+        try:
+            self.background = pygame.transform.smoothscale(self.background, size).convert()
+        except ValueError:
+            self.background = pygame.transform.scale(self.background, size).convert()
+
     def load_map(self, beatmap):
         print("Loading beatmap...")
         beatmap.load()
@@ -249,13 +261,8 @@ class GameFrameManager:
         self.state.set_default(beatmap)
 
         bg_path = self.get_background_path(beatmap)
-        if bg_path:
-            self.background = pygame.image.load(bg_path)
-            background_ratio = self.size[1]/self.background.get_size()[1] + 0.1
-            self.background = pygame.transform.smoothscale(self.background, (
-                self.background.get_size()[0] * background_ratio,
-                self.background.get_size()[1] * background_ratio)).convert()
-            self.state.begin_background_fade()
+        if bg_path is not None:
+            self.set_background(bg_path)
 
     def debug_blit(self, *args, n=0, pixel_skip=19):
         self.window.blit(*args)
