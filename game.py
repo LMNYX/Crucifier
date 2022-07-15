@@ -34,16 +34,18 @@ class ObjectManager:
             (5 - ar) / 5 if ar < 5 else 800 - 500 * (ar - 5) / 5
         self.hit_objects = list(beatmap.hit_objects)  # new list object
         self.obj_offset = 0
-        threading.Thread(target=self._do_hit_object_load, args=(resources, resolution)).start()
+        object_thread = threading.Thread(target=self._do_hit_object_load, args=(resources, resolution)).start()
 
     def _do_hit_object_load(self, resources, resolution):
+        main_thread = threading.current_thread()
         config = resources.skin.config
         current_combo_color = 0
         for i, hit_object in enumerate(self.hit_objects):
+            if not main_thread.is_alive():
+                return print("Hit object loading thread killed itself D:")
             if hit_object.new_combo:
                 current_combo_color = (current_combo_color + 1) % len(config.combo_colors)
             self.hit_object_combo_colors[hit_object] = current_combo_color
-            progress = round((i / len(self.hit_objects))*20)
             if hit_object.type == HitObjectType.SLIDER:
                 color = config.combo_colors[current_combo_color] \
                     if config.slider_track_override == SkinOption.CURRENT_COMBO_COLOR \
@@ -133,11 +135,12 @@ class AudioManager:
             pygame.mixer.Channel(1).load(pathto)
         return channel if not is_beatmap_audio else 0
 
-    def play_audio(self, channel=0):
+    def play_audio(self, offset=0, channel=0):
         if self.is_disabled:
             return
         if channel == 0:
             pygame.mixer.music.play()
+            pygame.mixer.music.set_pos(offset / 1000)
             self.beatmap_audio_playing = True
         else:
             pygame.mixer.Channel(channel).play()
@@ -151,13 +154,13 @@ class AudioManager:
         else:
             pygame.mixer.Channel(channel).stop()
 
-    def load_and_play_audio(self, pathto, is_beatmap_audio=False):
+    def load_and_play_audio(self, pathto, offset=0, is_beatmap_audio=False):
         if self.is_disabled or (is_beatmap_audio and self.beatmap_audio_playing):
             return
         if is_beatmap_audio:
             self.beatmap_audio_playing = True
         channel = self.load_audio(pathto, is_beatmap_audio=is_beatmap_audio)
-        self.play_audio(channel=channel)
+        self.play_audio(offset=offset, channel=channel)
 
 
 class GameStateManager:
@@ -491,7 +494,7 @@ class Game:
 
         self.on_start_screen = False
         self.frame_manager.load_map(self.current_map)
-        self.state.map_started(self.current_map)
+        print(f"{self.current_map.path} has been loaded.")
 
     def on_toggle_debug(self, event):
         self.display_debug = not self.display_debug
@@ -548,8 +551,9 @@ class Game:
     def handle_audio(self):
         if not self.on_start_screen and not self.audio_manager.beatmap_audio_playing and \
                 self.state.current_offset >= 0:
-            self.audio_manager.load_and_play_audio(
-                self.current_map.general.audio_file, is_beatmap_audio=True)
+            self.audio_manager.load_and_play_audio(self.current_map.general.audio_file,
+                                                   offset=self.state.current_offset,
+                                                   is_beatmap_audio=True)
 
     def handle_state(self):
         if not self.state.currently_playing and self.current_map is not None:
@@ -561,12 +565,12 @@ class Game:
 
         while self.running:
             self.handle_events()
-            self.handle_audio()
+            self.handle_state()
             self.draw()
+            self.handle_audio()
 
             pygame.display.update()
             self.clock.tick(self.fps)
-            self.handle_state()
 
         pygame.time.wait(10)
         pygame.quit()
