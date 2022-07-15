@@ -481,6 +481,12 @@ class Game:
     def get_random_beatmap(self):
         return random.choice(self.get_random_beatmapset().beatmaps)
 
+    def get_testing_map(self):
+        for beatmapset in self.songs_folder.beatmapsets:
+            for beatmap in beatmapset.beatmaps:
+                if beatmap.path.endswith("ReeK - Sweets Rave Party (ft. L4hee) (mitsukai) [KAWAII RAVE COLLAB].osu"):
+                    return beatmap
+
     def on_random_map(self, event):
         if not self.on_start_screen:
             return
@@ -554,11 +560,13 @@ class Game:
             self.audio_manager.load_and_play_audio(self.current_map.general.audio_file,
                                                    offset=self.state.current_offset,
                                                    is_beatmap_audio=True)
+            self.clock.tick()  # This will make the current_offset not use time that passed before the audio was loaded
 
     def handle_state(self):
         if not self.state.currently_playing and self.current_map is not None:
             self.state.map_started(self.current_map)
-        self.state.advance()
+        else:
+            self.state.advance()
 
     def run(self):
         self.running = True
