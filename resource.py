@@ -99,6 +99,8 @@ class SkinManager(BaseManager):
         self.sliderball = []
         self._sliderfollowcircle = self.load_animation("sliderfollowcircle.png")
         self.sliderfollowcircle = []
+        self._defaults = [self.load_image(f"default-{num}.png") for num in range(0, 10)]
+        self.defaults = []
 
     def load_skin(self, path):
         self.path = path
@@ -106,6 +108,18 @@ class SkinManager(BaseManager):
 
     def resize(self, img):
         return pygame.transform.smoothscale(img, (self.resolution.object_size, self.resolution.object_size))
+
+    def scale(self, num_img, direction="v", downscale=1.0):
+        w, h = num_img.get_size()
+        if direction == "v":
+            size = (self.resolution.object_size / h * w * downscale,
+                    self.resolution.object_size * downscale)
+        elif direction == "h":
+            size = (self.resolution.object_size * downscale,
+                    self.resolution.object_size / w * h * downscale)
+        else:
+            raise ValueError("direction must be either 'v' or 'h'")
+        return pygame.transform.smoothscale(num_img, size)
 
     def create_combo_color_surfaces(self, surf):
         if surf is None:
@@ -119,7 +133,7 @@ class SkinManager(BaseManager):
             surf.fill(color, special_flags=pygame.BLEND_RGBA_MULT)
 
     def on_new_beatmap(self):
-        self.hitcircles = [self.resize(hitcircle) for hitcircle in self._hitcircles]
+        self.hitcircles = list(map(self.resize, self._hitcircles))
         if self.sliderstartcircles:
             self.sliderstartcircles = [self.resize(sliderstartcircles) for sliderstartcircles in self._sliderstartcircles]
         self.hitcircleoverlay = self.resize(self._hitcircleoverlay)
@@ -127,6 +141,7 @@ class SkinManager(BaseManager):
             self.sliderstartcircleoverlay = self.resize(self._sliderstartcircleoverlay)
         self.sliderball = list(map(self.create_combo_color_surfaces, map(self.resize, self._sliderball)))
         self.sliderfollowcircle = list(map(self.resize, self._sliderfollowcircle))
+        self.defaults = list(map(lambda d: self.scale(d, downscale=0.4), self._defaults))
 
     def make_approach_circle(self, size, combo_color):
         self.approachcircle = pygame.transform.smoothscale(self._approachcircle[combo_color], (size, size))
@@ -149,7 +164,7 @@ class SkinConfigParser:
         "Author": "",
         "Version": "1.0",
         "AnimationFramerate": -1,
-        "AllowSliderBallTint": False,
+        "AllowSliderBallTint": False,  # TODO: implement
         "ComboBurstRandom": False,
         "CursorCentre": True,
         "CursorRotate": True,
@@ -157,7 +172,7 @@ class SkinConfigParser:
         "CustomComboBurstSounds": [],
         "HitCircleOverlayAboveNumber": True,
         "LayeredHitSounds": True,
-        "SliderBallFlip": True,
+        "SliderBallFlip": True,  # TODO: implement
         "SpinnerFadePlayfield": False,
         "SpinnerFrequencyModule": True,
         "SpinnerNoBlink": False,
@@ -178,8 +193,8 @@ class SkinConfigParser:
         "SongSelectInactiveText": (255, 255, 255),
         "SpinnerBackground": (100, 100, 100),
         "StarBreakAdditive": (255, 182, 193),
-        "HitCirclePrefix": "default",
-        "HitCircleOverlap": -2,
+        "HitCirclePrefix": "default",  # TODO: look into
+        "HitCircleOverlap": -2,  # TODO: look into
         "ScorePrefix": "score",
         "ScoreOverlap": 0,
         "ComboPrefix": "score",

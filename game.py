@@ -22,6 +22,7 @@ class ObjectManager:
     def __init__(self):
         self.hit_objects = None
         self.hit_object_combo_colors = {}
+        self.hit_object_combos = []
         self.obj_offset = 0
         self.preempt = 0
         self.fadein = 0
@@ -40,12 +41,19 @@ class ObjectManager:
         main_thread = threading.current_thread()
         config = resources.skin.config
         current_combo_color = 0
+        current_combo = 1
         for i, hit_object in enumerate(self.hit_objects):
             if not main_thread.is_alive():
                 return print("Hit object loading thread killed itself D:")
+
             if hit_object.new_combo:
                 current_combo_color = (current_combo_color + 1) % len(config.combo_colors)
+                current_combo = 1
             self.hit_object_combo_colors[hit_object] = current_combo_color
+            self.hit_object_combos.append(current_combo)
+            if hit_object.type != HitObjectType.SPINNER:
+                current_combo += 1
+
             if hit_object.type == HitObjectType.SLIDER:
                 color = config.combo_colors[current_combo_color] \
                     if config.slider_track_override == SkinOption.CURRENT_COMBO_COLOR \
@@ -77,11 +85,14 @@ class ObjectManager:
     def get_opacity(self, hit_object, offset):
         # Time at which circle becomes 100% opacity
         clear = hit_object.time - self.preempt + self.fadein
-        return 255 if offset >= clear else 255 - round(
-            (clear - offset) / self.fadein * 255)
+        return 200 if offset >= clear else 200 - round(
+            (clear - offset) / self.fadein * 200)
 
     def get_combo_color(self, hit_object):
         return self.hit_object_combo_colors[hit_object]
+
+    def get_combo_number(self, hit_object):
+        return self.hit_object_combos[self.hit_objects.index(hit_object)]
 
     def get_ac_multiplier(self, hit_object, offset):
         return (hit_object.time - offset) / self.preempt * 2 + 1
@@ -340,7 +351,8 @@ class GameFrameManager:
         for hit_object in self.object_manager.get_hit_objects_for_offset(self.state.current_offset):
             # Spinners not yet implemented
             if hit_object.type == HitObjectType.SPINNER:
-                return self.draw_spinner(hit_object)
+                self.draw_spinner(hit_object)
+                continue
 
             # Get opacity for hit object
             opacity = self.object_manager.get_opacity(hit_object, self.state.current_offset)
@@ -368,7 +380,12 @@ class GameFrameManager:
             # Draw the rest of the hit object
             position = self.resolution.get_hitcircle_position(hit_object)
             self.window.blit(hitcircle, position)
-            self.window.blit(hitcircleoverlay, position)
+            if self.resources.skin.config.hit_circle_overlay_above_number:
+                self.window.blit(hitcircleoverlay, position)
+                self.draw_number(hit_object, opacity, position)
+            else:
+                self.draw_number(hit_object, opacity, position)
+                self.window.blit(hitcircleoverlay, position)
             if self.state.current_offset <= hit_object.time:
                 self.draw_approach_circle(hit_object, opacity, position, combo_color)
 
@@ -385,6 +402,17 @@ class GameFrameManager:
         approachcircle.set_alpha(opacity)
         offset = (approachcircle_size - self.resolution.object_size) // 2
         self.window.blit(approachcircle, tuple(map(lambda x: x - offset, position)))
+
+    def draw_number(self, hit_object, opacity, position):
+        number = self.object_manager.get_combo_number(hit_object)
+        num_pos_offset = self.resolution.object_size // (len(str(number))+1)
+        num_pos_start = position[0] + num_pos_offset
+        for i, num in enumerate(str(number)):
+            img = self.resources.skin.defaults[int(num)]
+            img.set_alpha(opacity)
+            pos = (num_pos_start + i*num_pos_offset - img.get_size()[0] // 2,
+                   position[1] + self.resolution.object_size // 2 - img.get_size()[1] // 2)
+            self.window.blit(img, pos)
 
     def draw_spinner(self, hit_object):
         pass
@@ -558,7 +586,7 @@ class Game:
         if not self.on_start_screen and not self.audio_manager.beatmap_audio_playing and \
                 self.state.current_offset >= 0:
             self.audio_manager.load_and_play_audio(self.current_map.general.audio_file,
-                                                   offset=self.state.current_offset,
+                                                   offset=self.state.current_offset,  # TODO: check if offset is needed
                                                    is_beatmap_audio=True)
             self.clock.tick()  # This will make the current_offset not use time that passed before the audio was loaded
 
