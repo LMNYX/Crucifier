@@ -9,8 +9,32 @@ def returns_self(func):
     return wrapper
 
 
-class ConfigurationManager:
-    version = 1
+class BaseConfig:
+    """
+    Contains some configuration functions used in multiple classes.
+    """
+
+    @returns_self
+    def set(self, key, value):
+        config = self.get(".".join(key.split(".")[:-1]))
+        config[key] = value
+
+    def get(self, key):
+        attr = self.configuration
+        if key != "":
+            for attr_name in key.split("."):
+                attr = attr[attr_name]
+        return attr
+
+    def getm(self, *keys):
+        attributes = []
+        for key in keys:
+            attributes.append(self.get(key))
+        return attributes
+
+
+class ConfigurationManager(BaseConfig):
+    version = 2
 
     # self return is to create chains, like for example:
     # config = ConfigurationManager().load().set("key", "value").save()
@@ -26,6 +50,10 @@ class ConfigurationManager:
             }),
             "rendering": Config(self, {
                 "fps_cap": 60,
+                "resolution": Config(self, {
+                    "width": 640,
+                    "height": 480,
+                }),
             })
         }
 
@@ -41,14 +69,6 @@ class ConfigurationManager:
         if config is not None:
             assign_config(self.configuration, config)
 
-
-    @returns_self
-    def set(self, key, value):
-        self.configuration[key] = value
-
-    def get(self, key):
-        return self.configuration[key]
-
     @returns_self
     def save(self):
         with open(self.file, "wb") as f:
@@ -60,50 +80,42 @@ class ConfigurationManager:
             return cls(file)
         with open(file, "rb") as f:
             config = pickle.load(f)
-            if config["__version"] != cls.version:
-                return cls(file, config.configuration)
-            return config
+            print(config["audio"].get("volume"))
+            return cls(file, config)
 
     @property
     def config_version(self):
         return self.configuration["__version"]
 
 
-class Config:
+class Config(BaseConfig):
     def __init__(self, parent, values):
         self.parent = parent
-        self.config = values
-
-    @returns_self
-    def set(self, key, value):
-        self.config[key] = value
-
-    def get(self, key):
-        return self.config[key]
+        self.configuration = values
 
     def __contains__(self, item):
-        return item in self.config
+        return item in self.configuration
 
     def __len__(self):
-        return len(self.config)
+        return len(self.configuration)
 
     def __iter__(self):
         return self.keys()
 
     def __setitem__(self, key, value):
-        self.config[key] = value
+        self.configuration[key] = value
 
     def __getitem__(self, item):
-        return self.config[item]
+        return self.configuration[item]
 
     def __delitem__(self, key):
-        del self.config[key]
+        del self.configuration[key]
 
     def items(self):
-        return self.config.items()
+        return self.configuration.items()
 
     def keys(self):
-        return self.config.keys()
+        return self.configuration.keys()
 
     def values(self):
-        return self.config.values()
+        return self.configuration.values()

@@ -2,7 +2,7 @@ from enum import Enum, IntEnum
 
 
 class DebugMode(Enum):
-    NO = 0
+    NONE = 0
     FEW = 1
     FULL = 2
 
