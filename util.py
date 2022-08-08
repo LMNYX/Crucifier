@@ -40,11 +40,8 @@ class ResolutionManager:
     def get_actual_playfield_rect(self):
         return self.actual_placement_offset + self.actual_playfield_size
 
-    def get_hitcircle_position(self, pos):
-        if hasattr(pos, "x") and hasattr(pos, "y"):
-            x, y = pos.x, pos.y
-        else:
-            x, y = pos
+    def get_hitcircle_position(self, hit_obj):
+        x, y = hit_obj.stacked_position
         return (x * self.osu_pixel_multiplier + self.actual_placement_offset[0] - self.object_size // 2,
                 y * self.osu_pixel_multiplier + self.actual_placement_offset[1] - self.object_size // 2)
 
@@ -130,4 +127,4 @@ class ObjectManager:
                                (hit_object.end_time - hit_object.time) *
                                len(hit_object.curve.curve_points)),
                     len(hit_object.curve.curve_points)-1)
-        return resolution.get_hitcircle_position(hit_object.curve.curve_points[index])
+        return resolution.get_hitcircle_position(hit_object.nested_objects[index])

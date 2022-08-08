@@ -53,6 +53,9 @@ class Gameplay(BaseState):
         self.size = self.screen.get_size()
         self.beatmap = beatmap
         self.debug_mode = debug_mode
+        self.key_events = {
+            pygame.K_ESCAPE: self.to_start_screen,
+        }
 
         self.audio_started = False
 
@@ -72,6 +75,13 @@ class Gameplay(BaseState):
         if self.background is not None:
             self.set_background(self.background)
         print("Beatmap loaded.")
+
+    def to_start_screen(self):
+        self.stop_and_cleanup()
+        self.game.switch_state("start")
+
+    def stop_and_cleanup(self):
+        self.audio_manager.stop_audio()
 
     @staticmethod
     def get_background_path(beatmap):
@@ -230,3 +240,8 @@ class Gameplay(BaseState):
                                                    is_beatmap_audio=True)
             self.audio_started = True
         self.state.advance()
+
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key in self.key_events:
+                self.key_events[event.key]()

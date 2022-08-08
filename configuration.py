@@ -16,7 +16,11 @@ class BaseConfig:
 
     @returns_self
     def set(self, key, value):
-        config = self.get(".".join(key.split(".")[:-1]))
+        if '.' not in key:
+            config = self
+        else:
+            config = self.get(".".join(key.split(".")[:-1]))
+            key = key.split(".")[-1]
         config[key] = value
 
     def get(self, key):
